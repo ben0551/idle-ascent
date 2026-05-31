@@ -31,6 +31,10 @@ const defaultState = () => ({
     prestigeCount: 0,
     prestigeMultiplier: 1,
 
+    // Events
+    activeBuffs: [],     // [{ res, mult, expiresAt, label }]
+    eventBonus: 1,       // accumulated permanent micro-bonuses from events
+
     // Unlocked resources
     unlockedResources: ['population']
 });
@@ -41,8 +45,9 @@ let G = defaultState();
 
 function computeMultipliers() {
     // Returns { global, click, buildings:{}, resources:{} }
+    const now = Date.now();
     const m = {
-        global: G.prestigeMultiplier || 1,
+        global: (G.prestigeMultiplier || 1) * (G.eventBonus || 1),
         click: G.clickPower,
         buildings: {},
         resources: {}
@@ -74,6 +79,13 @@ function computeMultipliers() {
                 m.resources[r] = (m.resources[r] || 1) * e.multiplier;
             });
         }
+    });
+
+    // Apply active timed buffs
+    (G.activeBuffs || []).forEach(buff => {
+        if (now >= buff.expiresAt) return;
+        if (buff.res === 'all') m.global *= buff.mult;
+        else m.resources[buff.res] = (m.resources[buff.res] || 1) * buff.mult;
     });
 
     return m;
@@ -117,6 +129,7 @@ function tick() {
 
     checkAgeAdvance();
     checkMilestones();
+    tickBuffs();
     updateUI();
 }
 
@@ -139,6 +152,8 @@ function checkAgeAdvance() {
         showAgeOverlay(age);
         burstParticles(age.color, 80);
         setTimeout(() => burstParticles(age.color, 60), 400);
+        treeDirty = true;
+        saveHallRecord();
         saveGame();
     }
 }
@@ -237,6 +252,7 @@ function purchaseResearch(id) {
     G.research[id] = true;
     if (def.effect?.type === 'unlock_resource') unlockResource(def.effect.resource);
     showToast(`🔬 Researched: ${def.name}`, 'research');
+    treeDirty = true;
     saveGame();
     updateUI();
 }
@@ -246,6 +262,50 @@ function unlockResource(res) {
         G.unlockedResources.push(res);
         document.getElementById(`res-${res}`)?.classList.remove('hidden');
         showToast(`✨ Unlocked: ${res.charAt(0).toUpperCase() + res.slice(1)}!`, 'unlock');
+    }
+}
+
+// ---- Hall of Ages ------------------------------------------
+
+function saveHallRecord() {
+    try {
+        const records = JSON.parse(localStorage.getItem('idleAscent_hall') || '[]');
+        records.unshift({
+            date: Date.now(),
+            ageIndex: G.ageIndex,
+            ageName: AGES[G.ageIndex].name,
+            ageEmoji: AGES[G.ageIndex].gatherIcon,
+            ageColor: AGES[G.ageIndex].color,
+            totalPop: G.totalEarned.population || 0,
+            playtime: Date.now() - G.startTime,
+            prestigeCount: G.prestigeCount || 0
+        });
+        // Keep last 20
+        localStorage.setItem('idleAscent_hall', JSON.stringify(records.slice(0, 20)));
+    } catch(e) {}
+}
+
+function renderHallOfAges() {
+    const list = document.getElementById('hallList');
+    if (!list) return;
+    try {
+        const records = JSON.parse(localStorage.getItem('idleAscent_hall') || '[]');
+        if (records.length === 0) {
+            list.innerHTML = '<div class="hall-empty">No records yet — advance your civilization!</div>';
+            return;
+        }
+        list.innerHTML = records.map((r, i) => `
+            <div class="hall-row">
+                <span class="hall-rank">#${i + 1}</span>
+                <span class="hall-age" style="color:${r.ageColor}">${r.ageEmoji} ${r.ageName}</span>
+                <span class="hall-pop">👥 ${fmt(r.totalPop)}</span>
+                <span class="hall-time">⏱ ${fmtTime(r.playtime)}</span>
+                ${r.prestigeCount > 0 ? `<span class="hall-prestige">✨×${r.prestigeCount}</span>` : ''}
+                <span class="hall-date">${new Date(r.date).toLocaleDateString()}</span>
+            </div>
+        `).join('');
+    } catch(e) {
+        list.innerHTML = '<div class="hall-empty">No records yet.</div>';
     }
 }
 
@@ -559,6 +619,8 @@ function renderStats() {
         prestigeBtn.disabled = true;
         prestigeBtn.classList.add('disabled');
     }
+
+    renderHallOfAges();
 }
 
 // ---- Toast --------------------------------------------------
@@ -582,6 +644,10 @@ function switchTab(name) {
     activeTab = name;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === name));
+    if (name === 'research' && treeViewMode === 'tree') {
+        treeDirty = true;
+        renderTechTree();
+    }
     updateUI();
 }
 
@@ -843,6 +909,8 @@ function init() {
     startLoop();
     initParticles();
     startNewsTicker();
+    initEvents();
+    initInput();
 }
 
 document.addEventListener('DOMContentLoaded', init);

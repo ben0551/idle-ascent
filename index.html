@@ -7,10 +7,40 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Age Transition Overlay -->
     <div id="ageOverlay" class="age-overlay hidden">
         <div class="age-overlay-content">
             <div class="age-overlay-title" id="overlayTitle"></div>
             <div class="age-overlay-sub" id="overlaySub"></div>
+        </div>
+    </div>
+
+    <!-- Random Event Modal -->
+    <div id="eventModal" class="event-modal hidden">
+        <div class="event-card" id="eventCard">
+            <div class="event-banner" id="eventBanner"></div>
+            <div class="event-body">
+                <div class="event-title" id="eventTitle"></div>
+                <div class="event-flavor" id="eventFlavor"></div>
+                <div class="event-choices" id="eventChoices"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Help Overlay -->
+    <div id="keyHelp" class="key-help hidden">
+        <div class="key-help-card">
+            <div class="key-help-title">⌨️ Keyboard Shortcuts</div>
+            <div class="key-help-grid">
+                <span class="key">Space</span><span>Gather</span>
+                <span class="key">1–5</span><span>Switch tabs</span>
+                <span class="key">B</span><span>Cycle buy amount</span>
+                <span class="key">L</span><span>List / Tree view</span>
+                <span class="key">P</span><span>Prestige (if eligible)</span>
+                <span class="key">?</span><span>This help panel</span>
+                <span class="key">Esc</span><span>Close overlays</span>
+            </div>
+            <button onclick="document.getElementById('keyHelp').classList.add('hidden')" class="save-btn" style="margin-top:12px">Close</button>
         </div>
     </div>
 
@@ -23,6 +53,9 @@
                 <div class="age-badge" id="ageBadge">Stone Age</div>
             </div>
         </header>
+
+        <!-- Active Buffs Strip -->
+        <div id="buffStrip" class="buff-strip hidden"></div>
 
         <!-- Resources Bar -->
         <section class="resources-bar" id="resourcesBar">
@@ -99,23 +132,17 @@
 
         <!-- Tabs -->
         <nav class="tabs">
-            <button class="tab-btn active" data-tab="buildings">
-                <span>🏗️</span> Buildings
-            </button>
+            <button class="tab-btn active" data-tab="buildings">🏗️ Buildings</button>
             <button class="tab-btn" data-tab="research">
-                <span>🔬</span> Research
+                🔬 Research
                 <span class="tab-badge hidden" id="researchBadge">!</span>
             </button>
             <button class="tab-btn" data-tab="upgrades">
-                <span>⬆️</span> Upgrades
+                ⬆️ Upgrades
                 <span class="tab-badge hidden" id="upgradesBadge">!</span>
             </button>
-            <button class="tab-btn" data-tab="milestones">
-                <span>🏆</span> Milestones
-            </button>
-            <button class="tab-btn" data-tab="stats">
-                <span>📊</span> Stats
-            </button>
+            <button class="tab-btn" data-tab="milestones">🏆 Milestones</button>
+            <button class="tab-btn" data-tab="stats">📊 Stats</button>
         </nav>
 
         <!-- Buildings Tab -->
@@ -132,8 +159,21 @@
 
         <!-- Research Tab -->
         <section class="tab-content" id="research">
-            <p class="tab-intro">Research advances your civilization's capabilities.</p>
-            <div class="research-grid" id="researchGrid"></div>
+            <div class="view-toggle-row">
+                <button class="view-btn active" data-view="list" onclick="setTreeView('list')">☰ List</button>
+                <button class="view-btn" data-view="tree" onclick="setTreeView('tree')">🌿 Tree</button>
+            </div>
+            <!-- List view -->
+            <div id="researchListView">
+                <div class="research-grid" id="researchGrid"></div>
+            </div>
+            <!-- Tree view -->
+            <div id="researchTreeView" class="hidden">
+                <div class="tree-scroll-wrap">
+                    <div id="treeSvgWrap"></div>
+                </div>
+                <div id="treeTip" class="tree-tip" style="display:none"></div>
+            </div>
         </section>
 
         <!-- Upgrades Tab -->
@@ -152,7 +192,7 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">👥</div>
-                    <div class="stat-label">Total Population Earned</div>
+                    <div class="stat-label">Total Pop Earned</div>
                     <div class="stat-val" id="statTotalPop">0</div>
                 </div>
                 <div class="stat-card">
@@ -172,7 +212,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🏆</div>
-                    <div class="stat-label">Milestones Reached</div>
+                    <div class="stat-label">Milestones</div>
                     <div class="stat-val" id="statMilestones">0</div>
                 </div>
                 <div class="stat-card">
@@ -191,6 +231,14 @@
                     <div class="stat-val" id="statPrestigeBonus">×1.0</div>
                 </div>
             </div>
+
+            <!-- Hall of Ages -->
+            <div class="hall-of-ages">
+                <div class="hall-title">🏛️ Hall of Ages</div>
+                <div class="hall-subtitle">Your civilization milestones across all runs</div>
+                <div id="hallList" class="hall-list"></div>
+            </div>
+
             <div class="prestige-panel" id="prestigePanel">
                 <div class="prestige-title">✨ Prestige</div>
                 <div class="prestige-desc" id="prestigeDesc">Reset all progress for a permanent production multiplier. Requires Industrial Age.</div>
@@ -199,18 +247,20 @@
             <div class="save-controls">
                 <button id="exportBtn" class="save-btn">Export Save</button>
                 <button id="importBtn" class="save-btn">Import Save</button>
+                <button onclick="document.getElementById('keyHelp').classList.remove('hidden')" class="save-btn">⌨️ Keys</button>
                 <button id="resetBtn" class="reset-btn">Hard Reset</button>
             </div>
         </section>
 
-        <!-- Notification Toast -->
         <div class="toast-container" id="toastContainer"></div>
     </div>
 
-    <!-- Particle Canvas (fullscreen, behind everything) -->
     <canvas id="particleCanvas" style="position:fixed;inset:0;pointer-events:none;z-index:50;"></canvas>
 
     <script src="data.js"></script>
+    <script src="techtree.js"></script>
+    <script src="events.js"></script>
+    <script src="input.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

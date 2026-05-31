@@ -884,3 +884,290 @@ const MILESTONES = [
     { id: 'info_age', name: 'Digital Frontier', emoji: '💻', description: 'Enter the Information Age.', condition: (g) => g.ageIndex >= 8 },
     { id: 'type2', name: 'Type II Civilization', emoji: '⭐', description: 'Achieve Type II Civilization status.', condition: (g) => g.ageIndex >= 9 }
 ];
+
+// ---- Random Events -----------------------------------------
+// effect types:
+//   gain:         { type:'gain', res, amount }
+//   lose_pct:     { type:'lose_pct', res, pct }          (0-1 fraction)
+//   temp_buff:    { type:'temp_buff', res, mult, dur }   (res='all' for global, dur in seconds)
+//   perm_micro:   { type:'perm_micro', mult }            (stacks into G.eventBonus)
+//   gamble:       { type:'gamble', win:{...effect}, lose:{...effect} }
+
+const RANDOM_EVENTS = [
+    // Early civilization
+    {
+        id: 'wandering_traders',
+        ages: ['stone','bronze','iron'],
+        emoji: '🐪',
+        title: 'Wandering Traders',
+        flavor: 'A caravan arrives from distant lands bearing strange goods and stranger stories.',
+        choices: [
+            { label: 'Trade knowledge', emoji: '📖', desc: 'Exchange stories — gain a burst of knowledge.',
+              effect: { type: 'gain', res: 'knowledge', amount: 200 } },
+            { label: 'Trade food', emoji: '🌾', desc: 'A fair exchange — population and food both grow.',
+              effect: { type: 'gain', res: 'population', amount: 300 } }
+        ]
+    },
+    {
+        id: 'cave_paintings',
+        ages: ['stone'],
+        emoji: '🎨',
+        title: 'Cave Paintings',
+        flavor: 'Someone has covered the cave walls with breathtaking images. A spark of culture ignites.',
+        choices: [
+            { label: 'Preserve them', emoji: '🏛️', desc: '+90 seconds of doubled knowledge production.',
+              effect: { type: 'temp_buff', res: 'knowledge', mult: 2, dur: 90 } },
+            { label: 'Copy the technique', emoji: '✍️', desc: 'Permanent +3% to all production.',
+              effect: { type: 'perm_micro', mult: 1.03 } }
+        ]
+    },
+    {
+        id: 'bountiful_hunt',
+        ages: ['stone','bronze'],
+        emoji: '🦌',
+        title: 'Bountiful Hunt',
+        flavor: 'The herds have returned in vast numbers. The tribe feasts.',
+        choices: [
+            { label: 'Feast now', emoji: '🍖', desc: '+2 min of 3× food production.',
+              effect: { type: 'temp_buff', res: 'food', mult: 3, dur: 120 } },
+            { label: 'Smoke the meat', emoji: '🏚️', desc: 'Preserve it — gain a large stockpile of food immediately.',
+              effect: { type: 'gain', res: 'food', amount: 800 } }
+        ]
+    },
+    {
+        id: 'storm_lightning',
+        ages: ['stone','bronze','iron'],
+        emoji: '⛈️',
+        title: 'The Storm',
+        flavor: 'A violent storm rolls in. Lightning strikes the forest, but someone is watching closely.',
+        choices: [
+            { label: 'Shelter the tribe', emoji: '🏕️', desc: 'Safe choice — lose 10% food but everyone survives.',
+              effect: { type: 'lose_pct', res: 'food', pct: 0.1 } },
+            { label: 'Study the lightning', emoji: '🔬', desc: 'Risky curiosity — gamble: 60% chance of +500 knowledge, 40% chance of losing 15% population.',
+              effect: { type: 'gamble',
+                win:  { type: 'gain',     res: 'knowledge', amount: 500 },
+                lose: { type: 'lose_pct', res: 'population', pct: 0.15 },
+                winChance: 0.6 } }
+        ]
+    },
+    {
+        id: 'rival_tribe',
+        ages: ['bronze','iron'],
+        emoji: '⚔️',
+        title: 'Rival Tribe',
+        flavor: 'A rival settlement sends an envoy. Their intent is unclear.',
+        choices: [
+            { label: 'Make peace', emoji: '🤝', desc: 'Lasting alliance — permanent +4% global production.',
+              effect: { type: 'perm_micro', mult: 1.04 } },
+            { label: 'Dominate them', emoji: '🗡️', desc: 'Absorb their people — gain a large pop boost, but lose some food.',
+              effect: { type: 'gain', res: 'population', amount: 1500 } }
+        ]
+    },
+    // Medieval / Renaissance
+    {
+        id: 'plague',
+        ages: ['medieval','renaissance'],
+        emoji: '🦠',
+        title: 'The Plague',
+        flavor: 'Dark ships arrive bearing a terrible sickness. The city falls silent.',
+        choices: [
+            { label: 'Quarantine', emoji: '🚧', desc: 'Lose 20% population but stop the spread.',
+              effect: { type: 'lose_pct', res: 'population', pct: 0.20 } },
+            { label: 'Seek a cure', emoji: '⚗️', desc: 'Desperate research — gain knowledge but risk more loss.',
+              effect: { type: 'gamble',
+                win:  { type: 'gain',     res: 'knowledge', amount: 5000 },
+                lose: { type: 'lose_pct', res: 'population', pct: 0.30 },
+                winChance: 0.55 } }
+        ]
+    },
+    {
+        id: 'patron',
+        ages: ['medieval','renaissance'],
+        emoji: '👑',
+        title: 'Wealthy Patron',
+        flavor: 'A duke wishes to fund a great work. What shall he commission?',
+        choices: [
+            { label: 'Commission art', emoji: '🎭', desc: '+2 min of 3× culture production.',
+              effect: { type: 'temp_buff', res: 'culture', mult: 3, dur: 120 } },
+            { label: 'Fund research', emoji: '📚', desc: '+90 seconds of 3× knowledge production.',
+              effect: { type: 'temp_buff', res: 'knowledge', mult: 3, dur: 90 } }
+        ]
+    },
+    {
+        id: 'great_fire',
+        ages: ['medieval','renaissance','industrial'],
+        emoji: '🔥',
+        title: 'The Great Fire',
+        flavor: 'A fire has broken out in the city. Flames consume whole districts.',
+        choices: [
+            { label: 'Rebuild stronger', emoji: '🏗️', desc: 'Lose 15% population — but gain permanent +5% production as the city improves.',
+              effect: { type: 'perm_micro', mult: 1.05 } },
+            { label: 'Evacuate', emoji: '🚶', desc: 'Minimal losses — lose only 8% population.',
+              effect: { type: 'lose_pct', res: 'population', pct: 0.08 } }
+        ]
+    },
+    {
+        id: 'printing_boom',
+        ages: ['renaissance'],
+        emoji: '📰',
+        title: 'Printing Revolution',
+        flavor: 'Presses run day and night. Ideas are spreading faster than anyone expected.',
+        choices: [
+            { label: 'Spread science', emoji: '🔬', desc: '+3 min of 2× knowledge production.',
+              effect: { type: 'temp_buff', res: 'knowledge', mult: 2, dur: 180 } },
+            { label: 'Spread politics', emoji: '📜', desc: 'Permanent +5% global — unity through shared ideas.',
+              effect: { type: 'perm_micro', mult: 1.05 } }
+        ]
+    },
+    {
+        id: 'alchemist',
+        ages: ['medieval','renaissance'],
+        emoji: '⚗️',
+        title: 'The Alchemist\'s Discovery',
+        flavor: 'An eccentric alchemist claims to have found something extraordinary in his lab.',
+        choices: [
+            { label: 'Fund more research', emoji: '💰', desc: 'Gamble: 65% — double science for 2 min. 35% — lose 10% of population (fraud!).',
+              effect: { type: 'gamble',
+                win:  { type: 'temp_buff', res: 'science', mult: 2, dur: 120 },
+                lose: { type: 'lose_pct', res: 'population', pct: 0.10 },
+                winChance: 0.65 } },
+            { label: 'Steal the notes', emoji: '📋', desc: 'Safe bet — gain a large knowledge cache.',
+              effect: { type: 'gain', res: 'knowledge', amount: 3000 } }
+        ]
+    },
+    // Industrial / Atomic
+    {
+        id: 'labor_strike',
+        ages: ['industrial'],
+        emoji: '✊',
+        title: 'The Great Strike',
+        flavor: 'Workers down tools across the factories. The streets fill with marchers.',
+        choices: [
+            { label: 'Meet their demands', emoji: '🤝', desc: 'Lose 10% pop production for 60s — but gain permanent +4% global from improved morale.',
+              effect: { type: 'perm_micro', mult: 1.04 } },
+            { label: 'Wait them out', emoji: '🏭', desc: '60 seconds of halved population production. Gamble — but science gain from the chaos.',
+              effect: { type: 'gain', res: 'science', amount: 2000 } }
+        ]
+    },
+    {
+        id: 'breakthrough',
+        ages: ['industrial','atomic'],
+        emoji: '💡',
+        title: 'Scientific Breakthrough',
+        flavor: 'A researcher bursts into the hall waving papers. Something fundamental has been proven.',
+        choices: [
+            { label: 'Publish immediately', emoji: '📡', desc: '+3 min of 3× science production. Rivals will catch up, but you lead now.',
+              effect: { type: 'temp_buff', res: 'science', mult: 3, dur: 180 } },
+            { label: 'Classify it', emoji: '🔒', desc: 'Keep the advantage — permanent +6% global production.',
+              effect: { type: 'perm_micro', mult: 1.06 } }
+        ]
+    },
+    {
+        id: 'nuclear_test',
+        ages: ['atomic'],
+        emoji: '☢️',
+        title: 'Nuclear Test',
+        flavor: 'Dawn breaks over the desert. The countdown reaches zero.',
+        choices: [
+            { label: 'Weaponize', emoji: '💣', desc: 'Lose 15% energy — but gain massive science from the data.',
+              effect: { type: 'gain', res: 'science', amount: 15000 } },
+            { label: 'Power plants', emoji: '⚡', desc: '+2 min of 4× energy production.',
+              effect: { type: 'temp_buff', res: 'energy', mult: 4, dur: 120 } }
+        ]
+    },
+    {
+        id: 'vaccine',
+        ages: ['atomic','space'],
+        emoji: '💉',
+        title: 'Vaccine Discovery',
+        flavor: 'A disease that once ravaged populations has been conquered. The world celebrates.',
+        choices: [
+            { label: 'Global rollout', emoji: '🌍', desc: '+3 min of 2× population production.',
+              effect: { type: 'temp_buff', res: 'population', mult: 2, dur: 180 } },
+            { label: 'Study further', emoji: '🔬', desc: 'Permanent +6% global production from medical advancements.',
+              effect: { type: 'perm_micro', mult: 1.06 } }
+        ]
+    },
+    // Space / Digital
+    {
+        id: 'solar_flare',
+        ages: ['space','digital','type2'],
+        emoji: '🌞',
+        title: 'Solar Flare',
+        flavor: 'Sensors detect an enormous coronal ejection. The grid flickers.',
+        choices: [
+            { label: 'Shield the grid', emoji: '🛡️', desc: 'Costly protection — lose 20% energy.',
+              effect: { type: 'lose_pct', res: 'energy', pct: 0.20 } },
+            { label: 'Harvest it', emoji: '⚡', desc: 'Gamble: 70% — massive energy gain. 30% — lose 25% energy.',
+              effect: { type: 'gamble',
+                win:  { type: 'gain',     res: 'energy', amount: 50000 },
+                lose: { type: 'lose_pct', res: 'energy', pct: 0.25 },
+                winChance: 0.70 } }
+        ]
+    },
+    {
+        id: 'ai_ethics',
+        ages: ['digital'],
+        emoji: '🤖',
+        title: 'The Ethics Debate',
+        flavor: 'Philosophers, engineers and politicians argue through the night about what the machines mean for humanity.',
+        choices: [
+            { label: 'Embrace progress', emoji: '🚀', desc: '+3 min of 2× all production.',
+              effect: { type: 'temp_buff', res: 'all', mult: 2, dur: 180 } },
+            { label: 'Careful regulation', emoji: '⚖️', desc: 'Slower, safer — permanent +8% global production from trust gained.',
+              effect: { type: 'perm_micro', mult: 1.08 } }
+        ]
+    },
+    {
+        id: 'space_discovery',
+        ages: ['space','digital'],
+        emoji: '🌌',
+        title: 'Cosmic Discovery',
+        flavor: 'Something unexpected has been detected at the edge of the solar system.',
+        choices: [
+            { label: 'Send a probe', emoji: '🛸', desc: '+3 min of 3× science production.',
+              effect: { type: 'temp_buff', res: 'science', mult: 3, dur: 180 } },
+            { label: 'Broadcast to Earth', emoji: '📡', desc: '+3 min of 3× knowledge production — public excitement surges.',
+              effect: { type: 'temp_buff', res: 'knowledge', mult: 3, dur: 180 } }
+        ]
+    },
+    {
+        id: 'first_contact',
+        ages: ['type2'],
+        emoji: '👽',
+        title: 'First Contact Signal',
+        flavor: 'The arrays fall silent. Then — a pattern. Unmistakably intelligent. Unmistakably not us.',
+        choices: [
+            { label: 'Respond', emoji: '📡', desc: '+5 min of all production doubled.',
+              effect: { type: 'temp_buff', res: 'all', mult: 2, dur: 300 } },
+            { label: 'Study the signal', emoji: '🔭', desc: 'Permanent +10% global production — the mathematics alone changes everything.',
+              effect: { type: 'perm_micro', mult: 1.10 } }
+        ]
+    },
+    {
+        id: 'golden_age',
+        ages: ['medieval','renaissance','industrial','atomic'],
+        emoji: '✨',
+        title: 'A Golden Age Dawns',
+        flavor: 'Art, science, philosophy — everything flourishes at once. The historians will write of this era.',
+        choices: [
+            { label: 'Celebrate', emoji: '🎉', desc: '+2 min of 2× everything.',
+              effect: { type: 'temp_buff', res: 'all', mult: 2, dur: 120 } },
+            { label: 'Institutionalize it', emoji: '🏛️', desc: 'Permanent +5% global production.',
+              effect: { type: 'perm_micro', mult: 1.05 } }
+        ]
+    },
+    {
+        id: 'meteor_shower',
+        ages: ['stone','bronze','iron','medieval'],
+        emoji: '☄️',
+        title: 'Meteor Shower',
+        flavor: 'Streaks of fire cross the sky for three nights. Priests and scientists argue about what it means.',
+        choices: [
+            { label: 'Treat as an omen', emoji: '🙏', desc: 'Culture +200 and 90 seconds of 2× culture production.',
+              effect: { type: 'temp_buff', res: 'culture', mult: 2, dur: 90 } },
+            { label: 'Study the fragments', emoji: '🪨', desc: 'Gain a burst of knowledge — metallic fragments reveal secrets.',
+              effect: { type: 'gain', res: 'knowledge', amount: 1000 } }
+        ]
+    }
+];

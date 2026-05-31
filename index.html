@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Ascent</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Idle Ascent</h1>
+            <p class="subtitle">Rise of Civilization</p>
+        </header>
+
+        <main>
+            <!-- Resource Display -->
+            <section class="resource-panel">
+                <div class="resource">
+                    <div class="resource-value" id="populationDisplay">0</div>
+                    <div class="resource-label">Population</div>
+                    <div class="resource-rate" id="populationRate">+0/s</div>
+                </div>
+            </section>
+
+            <!-- Current Age Display -->
+            <section class="age-panel">
+                <h2 id="currentAge">Stone Age</h2>
+                <p id="ageDescription">Humanity takes its first steps</p>
+                <div class="age-progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <p id="progressText">0 / 100 to Bronze Age</p>
+            </section>
+
+            <!-- Main Click Area -->
+            <section class="click-area">
+                <button id="clickButton" class="click-button">Gather</button>
+                <p class="click-info">+1 population per click</p>
+            </section>
+
+            <!-- Tabs -->
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="buildings">Buildings</button>
+                <button class="tab-btn" data-tab="upgrades">Upgrades</button>
+                <button class="tab-btn" data-tab="stats">Stats</button>
+            </nav>
+
+            <!-- Buildings Tab -->
+            <section class="tab-content active" id="buildings">
+                <div class="buildings-grid" id="buildingsGrid">
+                    <!-- Buildings will be generated here -->
+                </div>
+            </section>
+
+            <!-- Upgrades Tab -->
+            <section class="tab-content" id="upgrades">
+                <div class="upgrades-list" id="upgradesList">
+                    <!-- Upgrades will be generated here -->
+                </div>
+            </section>
+
+            <!-- Stats Tab -->
+            <section class="tab-content" id="stats">
+                <div class="stats-list">
+                    <div class="stat">
+                        <span class="stat-label">Total Population Earned:</span>
+                        <span class="stat-value" id="totalEarned">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Buildings Owned:</span>
+                        <span class="stat-value" id="buildingsOwned">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Time Played:</span>
+                        <span class="stat-value" id="timePlayed">0s</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Current Age:</span>
+                        <span class="stat-value" id="statAge">Stone Age</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <button id="resetButton" class="reset-button">Reset (Prestige)</button>
+        </footer>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

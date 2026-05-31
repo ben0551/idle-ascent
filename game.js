@@ -506,8 +506,8 @@ function updateUI() {
     document.getElementById('researchBadge').classList.toggle('hidden', availableResearch.length === 0);
 
     // Active tab content
-    if (activeTab === 'buildings') renderBuildings();
-    if (activeTab === 'research') renderResearch();
+    if (activeTab === 'buildings') tickBuildings();
+    if (activeTab === 'research') tickResearch();
     if (activeTab === 'upgrades') tickUpgrades();
     if (activeTab === 'milestones') tickMilestones();
     if (activeTab === 'stats') renderStats();
@@ -524,56 +524,84 @@ function isUnlockedByAge(ageId) {
 }
 
 let selectedBuilding = null;
+let buildingsBuilt = false;
 
 function renderBuildings() {
     const grid = document.getElementById('buildingsGrid');
     grid.innerHTML = '';
+    buildingsBuilt = false;
 
     BUILDINGS.forEach(bDef => {
-        const unlocked = isUnlockedByAge(bDef.unlockedAtAge);
-        const owned = G.buildings[bDef.id] || 0;
-        const prod = computeBuildingProduction(bDef);
-        const n = buyAmount === 'max' ? Math.max(1, calcMaxBuy(bDef)) : buyAmount;
-        const cost = buyAmount === 'max'
-            ? bulkBuildingCost(bDef, Math.max(1, calcMaxBuy(bDef)))
-            : bulkBuildingCost(bDef, n);
-        const actualN = buyAmount === 'max' ? calcMaxBuy(bDef) : n;
-        const affordable = unlocked && actualN > 0 && canAfford(cost);
-        const totalProd = computeBuildingProductionTotal(bDef);
-
         const card = document.createElement('div');
-        const isSelected = selectedBuilding === bDef.id;
-        card.className = 'building-card' +
-            (unlocked ? (affordable ? ' can-afford' : '') : ' locked') +
-            (isSelected ? ' selected' : '');
-
+        card.className = 'building-card';
+        card.dataset.id = bDef.id;
         card.innerHTML = `
             <div class="bc-header">
                 <span class="bc-emoji">${bDef.emoji}</span>
                 <span class="bc-name">${bDef.name}</span>
-                <span class="bc-owned ${owned > 0 ? 'has-owned' : ''}">${owned}</span>
+                <span class="bc-owned"></span>
             </div>
             <div class="bc-desc">${bDef.description}</div>
-            <div class="bc-prod">${prodString(prod)}<span class="bc-per"> each</span></div>
-            ${owned > 0 ? `<div class="bc-total-prod">Total: ${prodString(totalProd)}</div>` : ''}
-            <div class="bc-cost">${unlocked ? costString(cost, affordable) : `🔒 ${AGES.find(a => a.id === bDef.unlockedAtAge)?.name}`}</div>
+            <div class="bc-prod"></div>
+            <div class="bc-total-prod" style="display:none"></div>
+            <div class="bc-cost"></div>
         `;
-
-        if (unlocked) {
-            card.addEventListener('click', (e) => {
-                if (e.shiftKey || e.ctrlKey) {
-                    // Info mode: just show panel
-                    selectedBuilding = selectedBuilding === bDef.id ? null : bDef.id;
-                    updateUI();
-                } else {
-                    purchaseBuilding(bDef.id);
-                    // Flash owned count
-                    const ownedEl = card.querySelector('.bc-owned');
-                    if (ownedEl) { ownedEl.classList.add('flash'); setTimeout(() => ownedEl.classList.remove('flash'), 400); }
-                }
-            });
-        }
+        card.addEventListener('click', () => purchaseBuilding(bDef.id));
         grid.appendChild(card);
+    });
+
+    buildingsBuilt = true;
+    tickBuildings();
+}
+
+function tickBuildings() {
+    if (!buildingsBuilt) { renderBuildings(); return; }
+    const grid = document.getElementById('buildingsGrid');
+    if (!grid) return;
+
+    BUILDINGS.forEach(bDef => {
+        const card = grid.querySelector(`[data-id="${bDef.id}"]`);
+        if (!card) return;
+
+        const unlocked = isUnlockedByAge(bDef.unlockedAtAge);
+        const owned = G.buildings[bDef.id] || 0;
+        const n = buyAmount === 'max' ? Math.max(1, calcMaxBuy(bDef)) : buyAmount;
+        const actualN = buyAmount === 'max' ? calcMaxBuy(bDef) : n;
+        const cost = bulkBuildingCost(bDef, Math.max(1, actualN));
+        const affordable = unlocked && actualN > 0 && canAfford(cost);
+
+        card.className = 'building-card' +
+            (unlocked ? (affordable ? ' can-afford' : '') : ' locked') +
+            (selectedBuilding === bDef.id ? ' selected' : '');
+
+        const ownedEl = card.querySelector('.bc-owned');
+        if (ownedEl) {
+            ownedEl.textContent = owned;
+            ownedEl.className = 'bc-owned' + (owned > 0 ? ' has-owned' : '');
+        }
+
+        const prodEl = card.querySelector('.bc-prod');
+        if (prodEl) {
+            const prod = computeBuildingProduction(bDef);
+            prodEl.innerHTML = prodString(prod) + '<span class="bc-per"> each</span>';
+        }
+
+        const totalEl = card.querySelector('.bc-total-prod');
+        if (totalEl) {
+            if (owned > 0) {
+                const totalProd = computeBuildingProductionTotal(bDef);
+                totalEl.innerHTML = 'Total: ' + prodString(totalProd);
+                totalEl.style.display = '';
+            } else {
+                totalEl.style.display = 'none';
+            }
+        }
+
+        const costEl = card.querySelector('.bc-cost');
+        if (costEl) {
+            if (!unlocked) costEl.textContent = `🔒 ${AGES.find(a => a.id === bDef.unlockedAtAge)?.name}`;
+            else costEl.innerHTML = costString(cost, affordable);
+        }
     });
 }
 
@@ -612,34 +640,76 @@ function costString(costObj, affordable) {
     }).join(' ');
 }
 
+let researchBuilt = false;
+
 function renderResearch() {
     const grid = document.getElementById('researchGrid');
     grid.innerHTML = '';
+    researchBuilt = false;
 
     RESEARCH.forEach(def => {
-        const unlocked = isUnlockedByAge(def.unlockedAtAge);
-        const done = G.research[def.id];
-        const prereqsMet = def.requires.every(req => G.research[req]);
-        const affordable = canAfford(def.cost);
-        const available = unlocked && prereqsMet && !done;
-
         const card = document.createElement('div');
-        card.className = 'research-card' + (done ? ' done' : available ? (affordable ? ' can-afford' : '') : ' locked');
+        card.className = 'research-card';
+        card.dataset.id = def.id;
         card.innerHTML = `
             <div class="rc-header">
                 <span class="rc-emoji">${def.emoji}</span>
                 <span class="rc-name">${def.name}</span>
-                ${done ? '<span class="rc-done-badge">✓</span>' : ''}
+                <span class="rc-done-badge" style="display:none">✓</span>
             </div>
             <div class="rc-desc">${def.description}</div>
             ${def.requires.length ? `<div class="rc-requires">Requires: ${def.requires.map(r => {
                 const rd = RESEARCH.find(x => x.id === r);
-                return `<span class="${G.research[r] ? 'req-met' : 'req-unmet'}">${rd?.name || r}</span>`;
+                return `<span class="rc-req" data-req="${r}">${rd?.name || r}</span>`;
             }).join(', ')}</div>` : ''}
-            <div class="rc-cost">${done ? 'Researched' : (unlocked ? costString(def.cost, affordable) : `🔒 ${AGES.find(a => a.id === def.unlockedAtAge)?.name}`)}</div>
+            <div class="rc-cost"></div>
         `;
-        if (available) card.addEventListener('click', () => purchaseResearch(def.id));
+        card.addEventListener('click', () => {
+            const d = G.research[def.id];
+            const prereqsMet = def.requires.every(req => G.research[req]);
+            const unlocked = isUnlockedByAge(def.unlockedAtAge);
+            if (!d && unlocked && prereqsMet) purchaseResearch(def.id);
+        });
         grid.appendChild(card);
+    });
+
+    researchBuilt = true;
+    tickResearch();
+}
+
+function tickResearch() {
+    if (!researchBuilt) { renderResearch(); return; }
+    const grid = document.getElementById('researchGrid');
+    if (!grid) return;
+
+    RESEARCH.forEach(def => {
+        const card = grid.querySelector(`[data-id="${def.id}"]`);
+        if (!card) return;
+
+        const unlocked = isUnlockedByAge(def.unlockedAtAge);
+        const done = !!G.research[def.id];
+        const prereqsMet = def.requires.every(req => G.research[req]);
+        const available = unlocked && prereqsMet && !done;
+        const affordable = available && canAfford(def.cost);
+
+        card.className = 'research-card' +
+            (done ? ' done' : available ? (affordable ? ' can-afford' : '') : ' locked');
+
+        const badge = card.querySelector('.rc-done-badge');
+        if (badge) badge.style.display = done ? '' : 'none';
+
+        // Update prereq span colours
+        card.querySelectorAll('.rc-req').forEach(span => {
+            const met = !!G.research[span.dataset.req];
+            span.className = met ? 'req-met' : 'req-unmet';
+        });
+
+        const costEl = card.querySelector('.rc-cost');
+        if (costEl) {
+            if (done) costEl.textContent = 'Researched';
+            else if (!unlocked) costEl.textContent = `🔒 ${AGES.find(a => a.id === def.unlockedAtAge)?.name}`;
+            else costEl.innerHTML = costString(def.cost, affordable);
+        }
     });
 }
 
@@ -872,6 +942,8 @@ function switchTab(name) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === name));
 
     // Force full rebuild when switching to these tabs
+    if (name === 'buildings') buildingsBuilt = false;
+    if (name === 'research') researchBuilt = false;
     if (name === 'upgrades') upgradesBuilt = false;
     if (name === 'milestones') milestonesBuilt = false;
     if (name === 'research' && treeViewMode === 'tree') {

@@ -312,6 +312,7 @@ function purchaseResearch(id) {
     if (def.effect?.type === 'unlock_resource') unlockResource(def.effect.resource);
     showToast(`🔬 Researched: ${def.name}`, 'research');
     treeDirty = true;
+    researchBuilt = false; // rebuild list so completed item moves to bottom
     saveGame();
     updateUI();
 }
@@ -647,7 +648,13 @@ function renderResearch() {
     grid.innerHTML = '';
     researchBuilt = false;
 
-    RESEARCH.forEach(def => {
+    const sorted = [...RESEARCH].sort((a, b) => {
+        const aDone = G.research[a.id] ? 1 : 0;
+        const bDone = G.research[b.id] ? 1 : 0;
+        return aDone - bDone;
+    });
+
+    sorted.forEach(def => {
         const card = document.createElement('div');
         card.className = 'research-card';
         card.dataset.id = def.id;

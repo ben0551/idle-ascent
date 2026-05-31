@@ -1295,9 +1295,36 @@ h1 {
 .psh-cost { font-size: 0.78em; color: #fbbf24; }
 
 /* ---- Mobile ----------------------------------------------- */
-@media (max-width: 500px) {
-    .buildings-grid, .research-grid { grid-template-columns: 1fr; }
-    .stats-grid { grid-template-columns: 1fr; }
+@media (max-width: 540px) {
+    .buildings-grid, .research-grid, .psh-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
     h1 { font-size: 1.4em; }
     .gather-btn { padding: 14px 32px; font-size: 1.1em; }
+    .resources-bar { gap: 6px; }
+    .resource-chip { flex: 1 1 100px; min-width: 90px; padding: 6px 8px; }
+    .res-val { font-size: 0.95em; }
+    .tabs { gap: 0; }
+    .tab-btn { padding: 8px 8px; font-size: 0.78em; }
+    .event-card { width: 92vw; }
+    .hall-row { font-size: 0.7em; }
+    .age-overlay-title { font-size: 1.8em; }
+    .buy-amount-row { flex-wrap: wrap; }
+    .tree-scroll-wrap { border-radius: 8px; }
 }
+
+@media (max-width: 360px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .resource-chip { flex: 1 1 80px; }
+    h1 { font-size: 1.2em; }
+}
+
+/* ---- Smooth scrollbar for all overflow elements ----------- */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }

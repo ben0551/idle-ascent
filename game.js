@@ -525,6 +525,10 @@ function updateUI() {
     // Show prestige shop tab after first prestige
     const pTab = document.getElementById('prestigeShopTab');
     if (pTab) pTab.classList.toggle('hidden', (G.prestigeCount || 0) < 1);
+
+    // Show Rebirth button in header when eligible
+    const rebirthBtn = document.getElementById('rebirthHeaderBtn');
+    if (rebirthBtn) rebirthBtn.classList.toggle('hidden', !canPrestige());
 }
 
 function isUnlockedByAge(ageId) {
@@ -872,15 +876,15 @@ function renderStats() {
 
     // Prestige panel
     const bonus = Math.floor(Math.sqrt((G.totalEarned.population || 0) / 1e6));
-    const eligible = G.ageIndex >= 5;
+    const eligible = canPrestige();
     const prestigeBtn = document.getElementById('prestigeBtn');
     const prestigeDesc = document.getElementById('prestigeDesc');
     if (eligible) {
-        prestigeDesc.textContent = `Next prestige: +${bonus * 10}% production (×${(1 + bonus * 0.1).toFixed(1)}). You have earned ${fmt(G.totalEarned.population)} total pop.`;
+        prestigeDesc.textContent = `Rebirth multiplier: ×${(1 + bonus * 0.1).toFixed(2)} — earned ${fmt(G.totalEarned.population)} total population across this cycle.`;
         prestigeBtn.disabled = false;
         prestigeBtn.classList.remove('disabled');
     } else {
-        prestigeDesc.textContent = `Reach the Industrial Age to unlock prestige. Current age: ${AGES[G.ageIndex].name}.`;
+        prestigeDesc.textContent = `Reach the Iron Age to unlock Rebirth. Current age: ${AGES[G.ageIndex].name}.`;
         prestigeBtn.disabled = true;
         prestigeBtn.classList.add('disabled');
     }
@@ -997,6 +1001,23 @@ function loadGame() {
         const raw = localStorage.getItem('idleAscent_v2');
         if (!raw) return;
         const saved = JSON.parse(raw);
+
+        // v3 migration: 5 new cosmic ages prepended, all thresholds ×1000
+        if (!saved.schemaVersion || saved.schemaVersion < 3) {
+            saved.ageIndex = (saved.ageIndex || 0) + 5;
+            // Scale population to roughly maintain position in new threshold scale
+            const scalePop = (n) => Math.floor((n || 0) * 1000);
+            saved.population = scalePop(saved.population);
+            if (saved.totalEarned) {
+                Object.keys(saved.totalEarned).forEach(k => {
+                    saved.totalEarned[k] = scalePop(saved.totalEarned[k]);
+                });
+            }
+            ['food','knowledge','science','culture','energy'].forEach(r => {
+                if (saved[r]) saved[r] = scalePop(saved[r]);
+            });
+            saved.schemaVersion = 3;
+        }
         G = Object.assign(defaultState(), saved);
 
         // Offline progress: up to 8 hours
@@ -1042,13 +1063,19 @@ function importSave() {
     }
 }
 
+const PRESTIGE_ELIGIBLE_AGES = new Set(['iron','medieval','renaissance','industrial','atomic','space','digital','type2','type3']);
+
+function canPrestige() {
+    return PRESTIGE_ELIGIBLE_AGES.has(AGES[G.ageIndex]?.id);
+}
+
 function prestigeGame() {
-    if (G.ageIndex < 5) {
-        showToast('⚠️ Reach Industrial Age before prestiging!', 'error');
+    if (!canPrestige()) {
+        showToast('⚠️ Reach the Iron Age to Rebirth!', 'error');
         return;
     }
-    const bonus = Math.floor(Math.sqrt(G.totalEarned.population / 1e6));
-    if (!confirm(`Prestige? You'll reset everything but gain a permanent +${bonus * 10}% production bonus (×${(1 + bonus * 0.1).toFixed(1)}). Requires Industrial Age or beyond.`)) return;
+    const bonus = Math.floor(Math.sqrt(G.totalEarned.population / 1e9));
+    if (!confirm(`🌌 Rebirth — restart the universe from the Big Bang?\n\nYou will lose all progress but gain a permanent ×${(1 + bonus * 0.1).toFixed(2)} production multiplier that carries forward.\n\nBonus scales with total population earned.`)) return;
 
     const newMultiplier = (G.prestigeMultiplier || 1) + bonus * 0.1;
     const newCount = (G.prestigeCount || 0) + 1;
@@ -1075,7 +1102,7 @@ function prestigeGame() {
     saveGame();
     applyAgeTheme(AGES[0]);
     updateUI();
-    showToast(`✨ Prestige #${newCount}! Production ×${newMultiplier.toFixed(1)} permanently!`, 'milestone');
+    showToast(`🌌 Rebirth #${newCount}! The universe resets. Production ×${newMultiplier.toFixed(2)} echoes forward.`, 'milestone');
 }
 
 function resetGame() {
@@ -1146,6 +1173,41 @@ function animateParticles() {
 // ---- Civilization News Ticker -------------------------------
 
 const NEWS = {
+    bigbang: [
+        'A singularity of infinite density... then everything.',
+        'The first quantum fluctuation separates something from nothing.',
+        'In the first second, the temperature drops from infinity.',
+        'Radiation fills the universe with blinding light.',
+        'Time itself has just begun.'
+    ],
+    quarks: [
+        'Three quarks bind together for the very first time.',
+        'Protons and neutrons emerge from the quark-gluon plasma.',
+        'Matter wins its brief war against antimatter.',
+        'The universe cools enough for nuclei to form.',
+        'Hydrogen — the simplest atom — appears in vast clouds.'
+    ],
+    stars: [
+        'The first star ignites. The darkness ends.',
+        'Gravity draws hydrogen into stellar furnaces.',
+        'A dying star scatters carbon, oxygen, iron into the void.',
+        'Galaxies spiral into being over hundreds of millions of years.',
+        'Supernovae forge elements heavier than iron.'
+    ],
+    earthform: [
+        'A protoplanetary disk swirls around a young sun.',
+        'Rocky planetesimals collide and fuse over millions of years.',
+        'A Mars-sized body strikes the young Earth — the Moon is born.',
+        'Volcanoes breathe out the first atmosphere.',
+        'Water arrives on comets. Oceans form. The world cools.'
+    ],
+    firstlife: [
+        'In a hydrothermal vent, the first self-replicating molecule forms.',
+        'Stromatolites — layered microbial mats — cover shallow seas.',
+        'Photosynthesis begins. Oxygen poisons the ancient atmosphere.',
+        'A single cell engulfs another instead of digesting it. Symbiosis begins.',
+        'For three billion years, bacteria are all the life there is.'
+    ],
     stone: [
         'Elders gather around the first campfire.',
         'A child discovers fire can cook meat.',
@@ -1265,6 +1327,18 @@ const NEWS = {
         'Post-scarcity economics replaces all former models.',
         'Humans live without disease, aging gracefully across centuries.',
         'The signal from the stars is finally understood. It is a greeting.'
+    ],
+    type3: [
+        'Your civilization spans a hundred thousand star systems.',
+        'The galactic core has been tapped as an energy source.',
+        'New stars are engineered and ignited on demand.',
+        'The black hole at the galaxy\'s heart becomes a power plant.',
+        'You build a Dyson Swarm around the galactic centre.',
+        'Other Type III civilizations make contact. There are three of us.',
+        'Distance becomes irrelevant. The galaxy is your backyard.',
+        'You engineer planets as raw material.',
+        'A galaxy-wide communication network carries a trillion voices.',
+        'The next galaxy glows on the horizon.'
     ]
 };
 

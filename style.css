@@ -47,6 +47,31 @@ h1 {
     letter-spacing: 1px;
 }
 
+.rebirth-btn {
+    background: linear-gradient(135deg, rgba(192,132,252,0.2), rgba(232,121,249,0.15));
+    border: 1.5px solid #c084fc;
+    color: #c084fc;
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.78em;
+    font-weight: 700;
+    transition: all 0.3s;
+    animation: rebirthPulse 2s ease-in-out infinite;
+    letter-spacing: 0.3px;
+}
+
+.rebirth-btn:hover {
+    background: rgba(192,132,252,0.3);
+    box-shadow: 0 0 16px rgba(192,132,252,0.6);
+    transform: scale(1.05);
+}
+
+@keyframes rebirthPulse {
+    0%,100% { box-shadow: 0 0 6px rgba(192,132,252,0.3); }
+    50%      { box-shadow: 0 0 16px rgba(192,132,252,0.7); }
+}
+
 .icon-btn {
     background: none;
     border: none;

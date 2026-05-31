@@ -304,6 +304,7 @@ function purchaseUpgrade(id) {
     deductCost(def.cost);
     G.upgrades[id] = true;
     if (def.effect?.type === 'unlock_resource') unlockResource(def.effect.resource);
+    upgradesBuilt = false;
     saveGame();
     updateUI();
 }
@@ -734,7 +735,13 @@ function renderUpgrades() {
     list.innerHTML = '';
     upgradesBuilt = false;
 
-    UPGRADES.forEach(def => {
+    const sorted = [...UPGRADES].sort((a, b) => {
+        const aDone = G.upgrades[a.id] ? 1 : 0;
+        const bDone = G.upgrades[b.id] ? 1 : 0;
+        return aDone - bDone;
+    });
+
+    sorted.forEach(def => {
         const card = document.createElement('div');
         card.className = 'upgrade-card';
         card.dataset.id = def.id;

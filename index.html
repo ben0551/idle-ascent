@@ -120,6 +120,13 @@
 
         <!-- Buildings Tab -->
         <section class="tab-content active" id="buildings">
+            <div class="buy-amount-row">
+                <span class="buy-label">Buy:</span>
+                <button class="buy-btn active" data-amount="1" onclick="setBuyAmount(1)">×1</button>
+                <button class="buy-btn" data-amount="10" onclick="setBuyAmount(10)">×10</button>
+                <button class="buy-btn" data-amount="100" onclick="setBuyAmount(100)">×100</button>
+                <button class="buy-btn" data-amount="max" onclick="setBuyAmount('max')">Max</button>
+            </div>
             <div class="buildings-grid" id="buildingsGrid"></div>
         </section>
 

@@ -207,14 +207,7 @@ function deductCost(costObj) {
 }
 
 function purchaseBuilding(id) {
-    const bDef = BUILDINGS.find(b => b.id === id);
-    if (!bDef) return;
-    const cost = buildingCost(bDef);
-    if (!canAfford(cost)) return;
-    deductCost(cost);
-    G.buildings[id] = (G.buildings[id] || 0) + 1;
-    saveGame();
-    updateUI();
+    purchaseBuildingN(id, buyAmount);
 }
 
 function purchaseUpgrade(id) {
@@ -276,36 +269,87 @@ function fmtTime(ms) {
     return `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h`;
 }
 
+// ---- Buy Amount Toggle --------------------------------------
+
+let buyAmount = 1; // 1, 10, 100, or 'max'
+
+function setBuyAmount(n) {
+    buyAmount = n;
+    document.querySelectorAll('.buy-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.amount == n);
+    });
+    updateUI();
+}
+
+function calcMaxBuy(bDef) {
+    // Binary search for max affordable count
+    let lo = 0, hi = 10000;
+    const owned = G.buildings[bDef.id] || 0;
+    while (lo < hi) {
+        const mid = Math.floor((lo + hi + 1) / 2);
+        if (canAffordBulk(bDef, owned, mid)) lo = mid;
+        else hi = mid - 1;
+    }
+    return lo;
+}
+
+function canAffordBulk(bDef, currentOwned, n) {
+    if (n === 0) return false;
+    const totalCost = {};
+    for (let i = 0; i < n; i++) {
+        Object.entries(bDef.baseCost).forEach(([res, base]) => {
+            totalCost[res] = (totalCost[res] || 0) + Math.ceil(base * Math.pow(COST_SCALE, currentOwned + i));
+        });
+    }
+    return Object.entries(totalCost).every(([res, amt]) => (G[res] || 0) >= amt);
+}
+
+function bulkBuildingCost(bDef, n) {
+    const owned = G.buildings[bDef.id] || 0;
+    const cost = {};
+    for (let i = 0; i < n; i++) {
+        Object.entries(bDef.baseCost).forEach(([res, base]) => {
+            cost[res] = (cost[res] || 0) + Math.ceil(base * Math.pow(COST_SCALE, owned + i));
+        });
+    }
+    return cost;
+}
+
+function purchaseBuildingN(id, n) {
+    const bDef = BUILDINGS.find(b => b.id === id);
+    if (!bDef) return;
+    const owned = G.buildings[bDef.id] || 0;
+    const count = n === 'max' ? calcMaxBuy(bDef) : n;
+    if (count === 0) return;
+    if (!canAffordBulk(bDef, owned, count)) return;
+    const cost = bulkBuildingCost(bDef, count);
+    deductCost(cost);
+    G.buildings[id] = owned + count;
+    saveGame();
+    updateUI();
+}
+
 // ---- UI Updaters --------------------------------------------
 
 let activeTab = 'buildings';
 
+const RES_ID_MAP = {
+    population: 'pop', food: 'food', knowledge: 'know',
+    science: 'sci', culture: 'cult', energy: 'energy'
+};
+
 function updateUI() {
-    const age = AGES[G.ageIndex];
     const prod = lastProduction;
 
-    // Resources
-    const RES = ['population', 'food', 'knowledge', 'science', 'culture', 'energy'];
-    RES.forEach(res => {
+    // Resources chips
+    Object.keys(RES_ID_MAP).forEach(res => {
         const chip = document.getElementById(`res-${res}`);
         if (!chip) return;
         if (G.unlockedResources.includes(res)) chip.classList.remove('hidden');
-        document.getElementById(`${res.slice(0, 3)}-val`).textContent = fmt(G[res]);
-        document.getElementById(`${res.slice(0, 3)}-rate`).textContent = fmtRate(prod[res] || 0);
+        const prefix = RES_ID_MAP[res];
+        document.getElementById(`${prefix}-val`).textContent = fmt(G[res] || 0);
+        document.getElementById(`${prefix}-rate`).textContent = fmtRate(prod[res] || 0);
     });
-    // special: population -> pop, knowledge -> know etc - fix IDs
-    document.getElementById('pop-val').textContent = fmt(G.population);
-    document.getElementById('pop-rate').textContent = fmtRate(prod.population || 0);
-    document.getElementById('food-val').textContent = fmt(G.food);
-    document.getElementById('food-rate').textContent = fmtRate(prod.food || 0);
-    document.getElementById('know-val').textContent = fmt(G.knowledge);
-    document.getElementById('know-rate').textContent = fmtRate(prod.knowledge || 0);
-    document.getElementById('sci-val').textContent = fmt(G.science);
-    document.getElementById('sci-rate').textContent = fmtRate(prod.science || 0);
-    document.getElementById('cult-val').textContent = fmt(G.culture);
-    document.getElementById('cult-rate').textContent = fmtRate(prod.culture || 0);
-    document.getElementById('energy-val').textContent = fmt(G.energy);
-    document.getElementById('energy-rate').textContent = fmtRate(prod.energy || 0);
 
     // Age progress
     const nextAge = AGES[Math.min(G.ageIndex + 1, AGES.length - 1)];
@@ -352,17 +396,21 @@ function isUnlockedByAge(ageId) {
 function renderBuildings() {
     const grid = document.getElementById('buildingsGrid');
     grid.innerHTML = '';
-    const currentAge = AGES[G.ageIndex];
 
     BUILDINGS.forEach(bDef => {
         const unlocked = isUnlockedByAge(bDef.unlockedAtAge);
-        const cost = buildingCost(bDef);
-        const affordable = canAfford(cost);
         const owned = G.buildings[bDef.id] || 0;
         const prod = computeBuildingProduction(bDef);
+        const n = buyAmount === 'max' ? Math.max(1, calcMaxBuy(bDef)) : buyAmount;
+        const cost = buyAmount === 'max'
+            ? bulkBuildingCost(bDef, Math.max(1, calcMaxBuy(bDef)))
+            : bulkBuildingCost(bDef, n);
+        const actualN = buyAmount === 'max' ? calcMaxBuy(bDef) : n;
+        const affordable = unlocked && actualN > 0 && canAfford(cost);
 
         const card = document.createElement('div');
         card.className = 'building-card' + (unlocked ? (affordable ? ' can-afford' : '') : ' locked');
+        const buyLabel = buyAmount === 'max' ? `Buy Max (${actualN})` : `Buy ×${n}`;
         card.innerHTML = `
             <div class="bc-header">
                 <span class="bc-emoji">${bDef.emoji}</span>
@@ -371,7 +419,7 @@ function renderBuildings() {
             </div>
             <div class="bc-desc">${bDef.description}</div>
             <div class="bc-prod">${prodString(prod)}</div>
-            <div class="bc-cost">${unlocked ? costString(cost, affordable) : `🔒 Unlocks in ${AGES.find(a => a.id === bDef.unlockedAtAge)?.name}`}</div>
+            <div class="bc-cost">${unlocked ? costString(cost, affordable) : `🔒 ${AGES.find(a => a.id === bDef.unlockedAtAge)?.name}`}</div>
         `;
         if (unlocked) card.addEventListener('click', () => purchaseBuilding(bDef.id));
         grid.appendChild(card);

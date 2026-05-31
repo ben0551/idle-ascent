@@ -700,6 +700,7 @@ h1 {
 .toast-unlock { border-color: var(--green); color: var(--green); }
 .toast-info { border-color: #60a5fa; color: #60a5fa; }
 .toast-error { border-color: var(--red); color: var(--red); }
+.toast-news { border-color: rgba(255,255,255,0.15); color: #ccc; font-style: italic; }
 
 /* ---- Utility ---------------------------------------------- */
 .hidden { display: none !important; }

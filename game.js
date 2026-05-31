@@ -137,6 +137,8 @@ function checkAgeAdvance() {
         const age = AGES[newIdx];
         applyAgeTheme(age);
         showAgeOverlay(age);
+        burstParticles(age.color, 80);
+        setTimeout(() => burstParticles(age.color, 60), 400);
         saveGame();
     }
 }
@@ -672,6 +674,153 @@ function resetGame() {
     showToast('Game reset.', 'info');
 }
 
+// ---- Particle System ----------------------------------------
+
+const particles = [];
+let canvas, ctx;
+
+function initParticles() {
+    canvas = document.getElementById('particleCanvas');
+    ctx = canvas.getContext('2d');
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    requestAnimationFrame(animateParticles);
+}
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+function burstParticles(color, count = 60) {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+        const speed = 3 + Math.random() * 8;
+        particles.push({
+            x: cx, y: cy,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 2,
+            life: 1,
+            decay: 0.012 + Math.random() * 0.015,
+            size: 4 + Math.random() * 6,
+            color
+        });
+    }
+}
+
+function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.15; // gravity
+        p.life -= p.decay;
+        if (p.life <= 0) { particles.splice(i, 1); continue; }
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(animateParticles);
+}
+
+// ---- Civilization News Ticker -------------------------------
+
+const NEWS = {
+    stone: [
+        'Elders gather around the first campfire.',
+        'A child discovers fire can cook meat.',
+        'The tribe names their settlement for the first time.',
+        'Flint knapping becomes an art form.',
+        'The shaman predicts the seasons.'
+    ],
+    bronze: [
+        'Bronze tools double the harvest yield.',
+        'A travelling merchant arrives with copper.',
+        'The first written records are scratched into clay tablets.',
+        'Soldiers march in formation for the first time.',
+        'Surplus food allows some to pursue crafts.'
+    ],
+    iron: [
+        'Iron plows turn the hardest soil.',
+        'The first city walls are completed.',
+        'A philosopher asks: what is the nature of the world?',
+        'Roads connect distant settlements.',
+        'A general unites three tribes under one banner.'
+    ],
+    medieval: [
+        'A cathedral spire rises above the city skyline.',
+        'Knights swear fealty to the new king.',
+        'Monks copy ancient texts by candlelight.',
+        'The first university opens its doors.',
+        'Guild craftsmen perfect the art of stained glass.'
+    ],
+    renaissance: [
+        'An artist completes a masterpiece that will last centuries.',
+        'The printing press produces 500 books in a day.',
+        'A scientist proposes that the earth circles the sun.',
+        'Explorers return with maps of distant lands.',
+        'A patron funds a new academy of arts and sciences.'
+    ],
+    industrial: [
+        'The first steam locomotive reaches the capital.',
+        'Factory workers demand a 12-hour workday.',
+        'Electricity lights the streets of the city.',
+        'Population growth accelerates beyond all prediction.',
+        'A telegraph message crosses the continent in seconds.'
+    ],
+    atomic: [
+        'The atom is split. The world holds its breath.',
+        'Penicillin saves millions of lives.',
+        'The first computer fills an entire room.',
+        'Satellites orbit the earth, mapping every coastline.',
+        'A vaccine eradicates a disease for the first time.'
+    ],
+    space: [
+        'A human sets foot on another world.',
+        'The space station becomes a permanent home.',
+        'Telescopes peer back to the first moments of creation.',
+        'A probe exits the solar system.',
+        'Children dream of growing up among the stars.'
+    ],
+    digital: [
+        'The global network connects every human mind.',
+        'An AI writes a symphony overnight.',
+        'A breakthrough in fusion energy powers the city.',
+        'Every language is translated instantly.',
+        'The genome of every species is catalogued.'
+    ],
+    type2: [
+        'The Dyson Sphere project begins.',
+        'Humanity bends the light of the sun.',
+        'A second civilization is detected beyond the stars.',
+        'The last resource shortage is solved permanently.',
+        'We are no longer alone in the cosmos.'
+    ]
+};
+
+let lastNewsAge = '';
+let newsQueue = [];
+let newsInterval = null;
+
+function startNewsTicker() {
+    newsInterval = setInterval(() => {
+        const age = AGES[G.ageIndex];
+        if (age.id !== lastNewsAge) {
+            lastNewsAge = age.id;
+            newsQueue = [...(NEWS[age.id] || [])].sort(() => Math.random() - 0.5);
+        }
+        if (newsQueue.length > 0) {
+            showToast(`📰 ${newsQueue.shift()}`, 'news');
+        }
+    }, 18000); // every 18 seconds
+}
+
 // ---- Boot ---------------------------------------------------
 
 function init() {
@@ -692,6 +841,8 @@ function init() {
 
     updateUI();
     startLoop();
+    initParticles();
+    startNewsTicker();
 }
 
 document.addEventListener('DOMContentLoaded', init);

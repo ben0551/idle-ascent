@@ -425,8 +425,7 @@ h1 {
 
 .building-card:hover {
     background: rgba(255,255,255,0.10);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    box-shadow: 0 0 0 1.5px var(--age-color);
 }
 
 .building-card.can-afford {
@@ -515,7 +514,7 @@ h1 {
 
 .research-card:hover {
     background: rgba(255,255,255,0.10);
-    transform: translateY(-2px);
+    box-shadow: 0 0 0 1.5px #a78bfa;
 }
 
 .research-card.can-afford {
@@ -1019,8 +1018,7 @@ h1 {
 .event-choice-btn:hover {
     background: rgba(255,255,255,0.1);
     border-color: var(--age-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    box-shadow: 0 0 0 1.5px var(--age-color);
 }
 
 .ec-emoji { font-size: 1.4em; margin-top: 2px; flex-shrink: 0; }
@@ -1260,7 +1258,7 @@ h1 {
 
 .psh-card.can-afford:hover {
     background: rgba(167,139,250,0.1);
-    transform: translateY(-2px);
+    box-shadow: 0 0 0 1.5px #a78bfa;
 }
 
 .psh-card.maxed {

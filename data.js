@@ -885,6 +885,110 @@ const MILESTONES = [
     { id: 'type2', name: 'Type II Civilization', emoji: '⭐', description: 'Achieve Type II Civilization status.', condition: (g) => g.ageIndex >= 9 }
 ];
 
+// ---- Discoveries -------------------------------------------
+// Auto-unlocked when condition is met. No purchase required.
+// effect types: same as upgrades/research (global, resource, click, building)
+
+const DISCOVERIES = [
+    // Triggered by population thresholds
+    {
+        id: 'd_tribe',
+        name: 'Tribal Unity',
+        emoji: '🔗',
+        description: 'Your people act as one. +5% global production.',
+        condition: (g) => g.population >= 500,
+        effect: { type: 'global', multiplier: 1.05 }
+    },
+    {
+        id: 'd_surplus',
+        name: 'Surplus Economy',
+        emoji: '🌽',
+        description: 'More than enough. +10% food production.',
+        condition: (g) => (g.food || 0) >= 1000,
+        effect: { type: 'resource', resource: 'food', multiplier: 1.10 }
+    },
+    {
+        id: 'd_scribe',
+        name: 'Rise of the Scribe',
+        emoji: '✍️',
+        description: 'Record-keeping accelerates civilization. +10% knowledge.',
+        condition: (g) => (g.knowledge || 0) >= 500,
+        effect: { type: 'resource', resource: 'knowledge', multiplier: 1.10 }
+    },
+    {
+        id: 'd_city_state',
+        name: 'City-State',
+        emoji: '🏛️',
+        description: 'A true city emerges. +10% global production.',
+        condition: (g) => g.population >= 15000,
+        effect: { type: 'global', multiplier: 1.10 }
+    },
+    {
+        id: 'd_market_econ',
+        name: 'Market Economy',
+        emoji: '💹',
+        description: 'Trade multiplies wealth. +15% all resource production.',
+        condition: (g) => Object.values(g.buildings).reduce((a,b)=>a+b,0) >= 20,
+        effect: { type: 'global', multiplier: 1.15 }
+    },
+    {
+        id: 'd_renaissance_spark',
+        name: 'Renaissance Spark',
+        emoji: '✨',
+        description: 'Art and science merge. +20% culture and knowledge.',
+        condition: (g) => (g.culture || 0) >= 5000 && (g.knowledge || 0) >= 50000,
+        effect: { type: 'multi-resource', resources: ['culture', 'knowledge'], multiplier: 1.2 }
+    },
+    {
+        id: 'd_industrial_might',
+        name: 'Industrial Might',
+        emoji: '⚙️',
+        description: 'Mass production becomes second nature. +20% population production.',
+        condition: (g) => g.population >= 2000000,
+        effect: { type: 'resource', resource: 'population', multiplier: 1.20 }
+    },
+    {
+        id: 'd_nuclear_dawn',
+        name: 'Nuclear Dawn',
+        emoji: '☢️',
+        description: 'The atom bends to your will. +25% energy production.',
+        condition: (g) => (g.energy || 0) >= 5000,
+        effect: { type: 'resource', resource: 'energy', multiplier: 1.25 }
+    },
+    {
+        id: 'd_global_net',
+        name: 'Global Network',
+        emoji: '🌐',
+        description: 'Every mind connected to every other. +25% science and knowledge.',
+        condition: (g) => (g.science || 0) >= 100000,
+        effect: { type: 'multi-resource', resources: ['science', 'knowledge'], multiplier: 1.25 }
+    },
+    {
+        id: 'd_transcendence',
+        name: 'Transcendence',
+        emoji: '🌌',
+        description: 'Humanity reaches beyond its limits. +30% global production.',
+        condition: (g) => g.ageIndex >= 8,
+        effect: { type: 'global', multiplier: 1.30 }
+    },
+    {
+        id: 'd_century_builder',
+        name: 'Century of Building',
+        emoji: '🏗️',
+        description: 'A civilization of builders. +15% global for owning 50+ buildings.',
+        condition: (g) => Object.values(g.buildings).reduce((a,b)=>a+b,0) >= 50,
+        effect: { type: 'global', multiplier: 1.15 }
+    },
+    {
+        id: 'd_polymath',
+        name: 'The Polymath',
+        emoji: '🧙',
+        description: 'Master of all disciplines. +20% global for completing 10+ researches.',
+        condition: (g) => Object.values(g.research).filter(Boolean).length >= 10,
+        effect: { type: 'global', multiplier: 1.20 }
+    }
+];
+
 // ---- Random Events -----------------------------------------
 // effect types:
 //   gain:         { type:'gain', res, amount }

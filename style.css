@@ -1047,6 +1047,50 @@ h1 {
     padding: 10px 0;
 }
 
+/* ---- Section Header --------------------------------------- */
+.section-header {
+    font-size: 0.95em;
+    font-weight: 700;
+    color: var(--age-color);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    letter-spacing: 0.5px;
+}
+
+/* ---- Discoveries ------------------------------------------ */
+.discoveries-list { display: flex; flex-direction: column; gap: 8px; }
+
+.discovery-card {
+    background: var(--card-bg);
+    border: 1.5px solid rgba(255,255,255,0.07);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0.5;
+}
+
+.discovery-card.unlocked {
+    opacity: 1;
+    border-color: rgba(250,204,21,0.35);
+    background: rgba(250,204,21,0.06);
+    animation: discoverGlow 0.5s ease-out;
+}
+
+@keyframes discoverGlow {
+    0%   { box-shadow: 0 0 0 rgba(250,204,21,0); }
+    50%  { box-shadow: 0 0 20px rgba(250,204,21,0.4); }
+    100% { box-shadow: 0 0 0 rgba(250,204,21,0); }
+}
+
+.dc-emoji { font-size: 1.4em; }
+.dc-info  { flex: 1; }
+.dc-name  { font-weight: 700; font-size: 0.88em; color: #facc15; margin-bottom: 2px; }
+.dc-desc  { font-size: 0.76em; color: var(--muted); }
+.dc-check { font-size: 1.1em; }
+
 /* ---- Mobile ----------------------------------------------- */
 @media (max-width: 500px) {
     .buildings-grid, .research-grid { grid-template-columns: 1fr; }

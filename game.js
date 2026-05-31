@@ -21,6 +21,7 @@ const defaultState = () => ({
     upgrades: {},         // id -> bool
     research: {},         // id -> bool
     milestones: {},       // id -> bool
+    discoveries: {},      // id -> bool
 
     ageIndex: 0,
     clickPower: 1,
@@ -79,6 +80,17 @@ function computeMultipliers() {
                 m.resources[r] = (m.resources[r] || 1) * e.multiplier;
             });
         }
+    });
+
+    // Apply discoveries
+    DISCOVERIES.forEach(d => {
+        if (!G.discoveries[d.id]) return;
+        const e = d.effect;
+        if (e.type === 'global') m.global *= e.multiplier;
+        if (e.type === 'resource') m.resources[e.resource] = (m.resources[e.resource] || 1) * e.multiplier;
+        if (e.type === 'multi-resource') e.resources.forEach(r => { m.resources[r] = (m.resources[r] || 1) * e.multiplier; });
+        if (e.type === 'click') m.click *= e.multiplier;
+        if (e.type === 'building') m.buildings[e.building] = (m.buildings[e.building] || 1) * e.multiplier;
     });
 
     // Apply active timed buffs
@@ -184,6 +196,13 @@ function checkMilestones() {
         if (!G.milestones[m.id] && m.condition(G)) {
             G.milestones[m.id] = true;
             showToast(`🏆 ${m.name}: ${m.description}`, 'milestone');
+        }
+    });
+    DISCOVERIES.forEach(d => {
+        if (!G.discoveries[d.id] && d.condition(G)) {
+            G.discoveries[d.id] = true;
+            showToast(`💡 Discovery: ${d.name} — ${d.description}`, 'unlock');
+            burstParticles(AGES[G.ageIndex].color, 30);
         }
     });
 }
@@ -478,7 +497,7 @@ function updateUI() {
     if (activeTab === 'buildings') renderBuildings();
     if (activeTab === 'research') renderResearch();
     if (activeTab === 'upgrades') renderUpgrades();
-    if (activeTab === 'milestones') renderMilestones();
+    if (activeTab === 'milestones') { renderMilestones(); renderDiscoveries(); }
     if (activeTab === 'stats') renderStats();
 }
 
@@ -617,6 +636,26 @@ function renderMilestones() {
                 <div class="mc-desc">${m.description}</div>
             </div>
             ${achieved ? '<span class="mc-check">✓</span>' : '<span class="mc-lock">🔒</span>'}
+        `;
+        list.appendChild(card);
+    });
+}
+
+function renderDiscoveries() {
+    const list = document.getElementById('discoveriesList');
+    if (!list) return;
+    list.innerHTML = '';
+    DISCOVERIES.forEach(d => {
+        const unlocked = G.discoveries[d.id];
+        const card = document.createElement('div');
+        card.className = 'discovery-card' + (unlocked ? ' unlocked' : '');
+        card.innerHTML = `
+            <span class="dc-emoji">${unlocked ? d.emoji : '❓'}</span>
+            <div class="dc-info">
+                <div class="dc-name">${unlocked ? d.name : '???'}</div>
+                <div class="dc-desc">${unlocked ? d.description : 'Meet a hidden condition to reveal this discovery.'}</div>
+            </div>
+            ${unlocked ? '<span class="dc-check">💡</span>' : ''}
         `;
         list.appendChild(card);
     });

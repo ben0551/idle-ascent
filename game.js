@@ -508,8 +508,8 @@ function updateUI() {
     // Active tab content
     if (activeTab === 'buildings') renderBuildings();
     if (activeTab === 'research') renderResearch();
-    if (activeTab === 'upgrades') renderUpgrades();
-    if (activeTab === 'milestones') { renderMilestones(); renderDiscoveries(); }
+    if (activeTab === 'upgrades') tickUpgrades();
+    if (activeTab === 'milestones') tickMilestones();
     if (activeTab === 'stats') renderStats();
     if (activeTab === 'prestige-shop') renderPrestigeShop();
 
@@ -643,48 +643,109 @@ function renderResearch() {
     });
 }
 
+let upgradesBuilt = false;
+
 function renderUpgrades() {
     const list = document.getElementById('upgradesList');
     list.innerHTML = '';
+    upgradesBuilt = false;
 
     UPGRADES.forEach(def => {
-        const unlocked = isUnlockedByAge(def.unlockedAtAge);
-        const done = G.upgrades[def.id];
-        const affordable = !done && canAfford(def.cost);
-
         const card = document.createElement('div');
-        card.className = 'upgrade-card' + (done ? ' done' : (!unlocked ? ' locked' : affordable ? ' can-afford' : ''));
+        card.className = 'upgrade-card';
+        card.dataset.id = def.id;
         card.innerHTML = `
             <div class="uc-header">
                 <span class="uc-emoji">${def.emoji}</span>
                 <span class="uc-name">${def.name}</span>
-                ${done ? '<span class="uc-done-badge">✓</span>' : ''}
+                <span class="uc-done-badge" style="display:none">✓</span>
             </div>
             <div class="uc-desc">${def.description}</div>
-            <div class="uc-cost">${done ? 'Purchased' : (unlocked ? costString(def.cost, affordable) : `🔒 ${AGES.find(a => a.id === def.unlockedAtAge)?.name}`)}</div>
+            <div class="uc-cost"></div>
         `;
-        if (unlocked && !done) card.addEventListener('click', () => purchaseUpgrade(def.id));
+        card.addEventListener('click', () => {
+            if (!G.upgrades[def.id] && isUnlockedByAge(def.unlockedAtAge)) {
+                purchaseUpgrade(def.id);
+            }
+        });
         list.appendChild(card);
     });
+
+    upgradesBuilt = true;
+    tickUpgrades();
 }
+
+function tickUpgrades() {
+    if (!upgradesBuilt) { renderUpgrades(); return; }
+    const list = document.getElementById('upgradesList');
+    if (!list) return;
+
+    UPGRADES.forEach(def => {
+        const card = list.querySelector(`[data-id="${def.id}"]`);
+        if (!card) return;
+
+        const unlocked = isUnlockedByAge(def.unlockedAtAge);
+        const done = G.upgrades[def.id];
+        const affordable = !done && unlocked && canAfford(def.cost);
+
+        card.className = 'upgrade-card' +
+            (done ? ' done' : !unlocked ? ' locked' : affordable ? ' can-afford' : '');
+
+        const badge = card.querySelector('.uc-done-badge');
+        if (badge) badge.style.display = done ? '' : 'none';
+
+        const costEl = card.querySelector('.uc-cost');
+        if (costEl) {
+            if (done) costEl.textContent = 'Purchased';
+            else if (!unlocked) costEl.textContent = `🔒 ${AGES.find(a => a.id === def.unlockedAtAge)?.name}`;
+            else costEl.innerHTML = costString(def.cost, affordable);
+        }
+    });
+}
+
+let milestonesBuilt = false;
 
 function renderMilestones() {
     const list = document.getElementById('milestonesList');
     list.innerHTML = '';
+    milestonesBuilt = false;
+
     MILESTONES.forEach(m => {
-        const achieved = G.milestones[m.id];
         const card = document.createElement('div');
-        card.className = 'milestone-card' + (achieved ? ' achieved' : '');
+        card.className = 'milestone-card';
+        card.dataset.id = m.id;
         card.innerHTML = `
             <span class="mc-emoji">${m.emoji}</span>
             <div class="mc-info">
                 <div class="mc-name">${m.name}</div>
                 <div class="mc-desc">${m.description}</div>
             </div>
-            ${achieved ? '<span class="mc-check">✓</span>' : '<span class="mc-lock">🔒</span>'}
+            <span class="mc-status">🔒</span>
         `;
         list.appendChild(card);
     });
+
+    milestonesBuilt = true;
+    tickMilestones();
+}
+
+function tickMilestones() {
+    if (!milestonesBuilt) { renderMilestones(); return; }
+    const list = document.getElementById('milestonesList');
+    if (!list) return;
+
+    MILESTONES.forEach(m => {
+        const card = list.querySelector(`[data-id="${m.id}"]`);
+        if (!card) return;
+        const achieved = !!G.milestones[m.id];
+        card.classList.toggle('achieved', achieved);
+        const status = card.querySelector('.mc-status');
+        if (status) status.textContent = achieved ? '✓' : '🔒';
+        if (status) status.className = achieved ? 'mc-check' : 'mc-lock';
+    });
+
+    // Discoveries use same pattern
+    renderDiscoveries();
 }
 
 function renderDiscoveries() {
@@ -809,6 +870,10 @@ function switchTab(name) {
     activeTab = name;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === name));
+
+    // Force full rebuild when switching to these tabs
+    if (name === 'upgrades') upgradesBuilt = false;
+    if (name === 'milestones') milestonesBuilt = false;
     if (name === 'research' && treeViewMode === 'tree') {
         treeDirty = true;
         renderTechTree();

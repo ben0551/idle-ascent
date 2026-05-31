@@ -27,6 +27,10 @@ const defaultState = () => ({
     startTime: Date.now(),
     lastTick: Date.now(),
 
+    // Prestige
+    prestigeCount: 0,
+    prestigeMultiplier: 1,
+
     // Unlocked resources
     unlockedResources: ['population']
 });
@@ -38,7 +42,7 @@ let G = defaultState();
 function computeMultipliers() {
     // Returns { global, click, buildings:{}, resources:{} }
     const m = {
-        global: 1,
+        global: G.prestigeMultiplier || 1,
         click: G.clickPower,
         buildings: {},
         resources: {}
@@ -536,6 +540,23 @@ function renderStats() {
     document.getElementById('statUpgrades').textContent = Object.values(G.upgrades).filter(Boolean).length;
     document.getElementById('statMilestones').textContent = Object.values(G.milestones).filter(Boolean).length;
     document.getElementById('statTime').textContent = fmtTime(elapsed);
+    document.getElementById('statPrestige').textContent = G.prestigeCount || 0;
+    document.getElementById('statPrestigeBonus').textContent = `×${(G.prestigeMultiplier || 1).toFixed(1)}`;
+
+    // Prestige panel
+    const bonus = Math.floor(Math.sqrt((G.totalEarned.population || 0) / 1e6));
+    const eligible = G.ageIndex >= 5;
+    const prestigeBtn = document.getElementById('prestigeBtn');
+    const prestigeDesc = document.getElementById('prestigeDesc');
+    if (eligible) {
+        prestigeDesc.textContent = `Next prestige: +${bonus * 10}% production (×${(1 + bonus * 0.1).toFixed(1)}). You have earned ${fmt(G.totalEarned.population)} total pop.`;
+        prestigeBtn.disabled = false;
+        prestigeBtn.classList.remove('disabled');
+    } else {
+        prestigeDesc.textContent = `Reach the Industrial Age to unlock prestige. Current age: ${AGES[G.ageIndex].name}.`;
+        prestigeBtn.disabled = true;
+        prestigeBtn.classList.add('disabled');
+    }
 }
 
 // ---- Toast --------------------------------------------------
@@ -576,6 +597,22 @@ function loadGame() {
         if (!raw) return;
         const saved = JSON.parse(raw);
         G = Object.assign(defaultState(), saved);
+
+        // Offline progress: up to 8 hours
+        const now = Date.now();
+        const offlineMs = Math.min(now - (G.lastTick || now), 8 * 3600 * 1000);
+        if (offlineMs > 5000) {
+            G.lastTick = now;
+            const prod = computeProduction();
+            const offlineSecs = offlineMs / 1000;
+            Object.keys(prod).forEach(res => {
+                if (!G.unlockedResources.includes(res)) return;
+                const gained = prod[res] * offlineSecs * 0.5; // 50% efficiency offline
+                G[res] = (G[res] || 0) + gained;
+                G.totalEarned[res] = (G.totalEarned[res] || 0) + gained;
+            });
+            showToast(`⏰ Welcome back! ${fmtTime(offlineMs)} of offline progress applied.`, 'info');
+        }
     } catch(e) {}
 }
 
@@ -604,8 +641,30 @@ function importSave() {
     }
 }
 
+function prestigeGame() {
+    if (G.ageIndex < 5) {
+        showToast('⚠️ Reach Industrial Age before prestiging!', 'error');
+        return;
+    }
+    const bonus = Math.floor(Math.sqrt(G.totalEarned.population / 1e6));
+    if (!confirm(`Prestige? You'll reset everything but gain a permanent +${bonus * 10}% production bonus (×${(1 + bonus * 0.1).toFixed(1)}). Requires Industrial Age or beyond.`)) return;
+
+    const newMultiplier = (G.prestigeMultiplier || 1) + bonus * 0.1;
+    const newCount = (G.prestigeCount || 0) + 1;
+    const milestones = { ...G.milestones };
+
+    G = defaultState();
+    G.prestigeCount = newCount;
+    G.prestigeMultiplier = newMultiplier;
+    G.milestones = milestones;
+    saveGame();
+    applyAgeTheme(AGES[0]);
+    updateUI();
+    showToast(`✨ Prestige #${newCount}! Production ×${newMultiplier.toFixed(1)} permanently!`, 'milestone');
+}
+
 function resetGame() {
-    if (!confirm('Reset all progress? This cannot be undone.')) return;
+    if (!confirm('Hard reset? ALL progress including prestige will be lost.')) return;
     localStorage.removeItem('idleAscent_v2');
     G = defaultState();
     applyAgeTheme(AGES[0]);
@@ -629,6 +688,7 @@ function init() {
     document.getElementById('exportBtn').addEventListener('click', exportSave);
     document.getElementById('importBtn').addEventListener('click', importSave);
     document.getElementById('resetBtn').addEventListener('click', resetGame);
+    document.getElementById('prestigeBtn').addEventListener('click', prestigeGame);
 
     updateUI();
     startLoop();

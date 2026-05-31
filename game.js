@@ -22,6 +22,7 @@ const defaultState = () => ({
     research: {},         // id -> bool
     milestones: {},       // id -> bool
     discoveries: {},      // id -> bool
+    prestigeShop: {},     // id -> level
 
     ageIndex: 0,
     clickPower: 1,
@@ -80,6 +81,17 @@ function computeMultipliers() {
                 m.resources[r] = (m.resources[r] || 1) * e.multiplier;
             });
         }
+    });
+
+    // Apply prestige shop bonuses
+    const pShop = G.prestigeShop || {};
+    PRESTIGE_SHOP.forEach(item => {
+        const level = pShop[item.id] || 0;
+        if (level === 0) return;
+        const e = item.effect;
+        if (e.type === 'global') m.global *= (1 + e.perLevel * level);
+        if (e.type === 'resource') m.resources[e.res] = (m.resources[e.res] || 1) * (1 + e.perLevel * level);
+        if (e.type === 'click') m.click *= (1 + e.perLevel * level);
     });
 
     // Apply discoveries
@@ -499,6 +511,11 @@ function updateUI() {
     if (activeTab === 'upgrades') renderUpgrades();
     if (activeTab === 'milestones') { renderMilestones(); renderDiscoveries(); }
     if (activeTab === 'stats') renderStats();
+    if (activeTab === 'prestige-shop') renderPrestigeShop();
+
+    // Show prestige shop tab after first prestige
+    const pTab = document.getElementById('prestigeShopTab');
+    if (pTab) pTab.classList.toggle('hidden', (G.prestigeCount || 0) < 1);
 }
 
 function isUnlockedByAge(ageId) {
@@ -879,10 +896,24 @@ function prestigeGame() {
     const newCount = (G.prestigeCount || 0) + 1;
     const milestones = { ...G.milestones };
 
+    const prestigeShop = { ...(G.prestigeShop || {}) };
+    const eventBonus = G.eventBonus || 1;
+
     G = defaultState();
     G.prestigeCount = newCount;
     G.prestigeMultiplier = newMultiplier;
     G.milestones = milestones;
+    G.prestigeShop = prestigeShop;
+    G.eventBonus = eventBonus;
+
+    // Apply start bonus from prestige shop
+    const startLevel = (prestigeShop['ps_start_pop'] || 0);
+    if (startLevel > 0) {
+        G.population = startLevel * 100;
+        G.totalEarned.population = startLevel * 100;
+    }
+
+    saveHallRecord();
     saveGame();
     applyAgeTheme(AGES[0]);
     updateUI();
@@ -962,70 +993,120 @@ const NEWS = {
         'A child discovers fire can cook meat.',
         'The tribe names their settlement for the first time.',
         'Flint knapping becomes an art form.',
-        'The shaman predicts the seasons.'
+        'The shaman predicts the seasons.',
+        'A grandmother teaches her grandchildren to weave.',
+        'Two tribes meet at the river — neither attacks.',
+        'The first burial ritual is performed with flowers.',
+        'Cave walls are painted with animals of breathtaking detail.',
+        'A hunter returns with more than the tribe can eat.'
     ],
     bronze: [
         'Bronze tools double the harvest yield.',
         'A travelling merchant arrives with copper.',
         'The first written records are scratched into clay tablets.',
         'Soldiers march in formation for the first time.',
-        'Surplus food allows some to pursue crafts.'
+        'Surplus food allows some to pursue crafts.',
+        'A city of ten thousand is considered enormous.',
+        'The first palace is built for the chieftain.',
+        'Trade routes stretch two hundred miles.',
+        'A craftsman forges the first decorated bronze mirror.',
+        'The river floods — but the farmers planned for it.'
     ],
     iron: [
         'Iron plows turn the hardest soil.',
         'The first city walls are completed.',
         'A philosopher asks: what is the nature of the world?',
         'Roads connect distant settlements.',
-        'A general unites three tribes under one banner.'
+        'A general unites three tribes under one banner.',
+        'The first census is taken — the king wants to know his people.',
+        'A playwright stages the first theatrical performance.',
+        'Coinage simplifies trade across the empire.',
+        'A surgeon successfully removes an arrowhead.',
+        'The aqueduct carries clean water to fifty thousand people.'
     ],
     medieval: [
         'A cathedral spire rises above the city skyline.',
         'Knights swear fealty to the new king.',
         'Monks copy ancient texts by candlelight.',
         'The first university opens its doors.',
-        'Guild craftsmen perfect the art of stained glass.'
+        'Guild craftsmen perfect the art of stained glass.',
+        'A merchant from the east brings spices never tasted before.',
+        'The Magna Carta is signed under duress and celebrated by all.',
+        'A windmill appears on every hill in the province.',
+        'The Black Death passes — and the survivors rebuild.',
+        'A young cartographer maps the known world in exquisite detail.'
     ],
     renaissance: [
         'An artist completes a masterpiece that will last centuries.',
         'The printing press produces 500 books in a day.',
         'A scientist proposes that the earth circles the sun.',
         'Explorers return with maps of distant lands.',
-        'A patron funds a new academy of arts and sciences.'
+        'A patron funds a new academy of arts and sciences.',
+        'The first public library opens — and is immediately full.',
+        'A surgeon dissects a human body and fills twelve notebooks.',
+        'A composer writes a symphony that makes the king weep.',
+        'A mathematican solves a problem unsolved for five hundred years.',
+        'Ships circumnavigate the globe for the first time.'
     ],
     industrial: [
         'The first steam locomotive reaches the capital.',
         'Factory workers demand a 12-hour workday.',
         'Electricity lights the streets of the city.',
         'Population growth accelerates beyond all prediction.',
-        'A telegraph message crosses the continent in seconds.'
+        'A telegraph message crosses the continent in seconds.',
+        'The first photograph is taken. Everyone gathers to see it.',
+        'A bridge spans the widest river ever crossed.',
+        'A doctor washes his hands before surgery. Results improve dramatically.',
+        'The first department store opens. The crowds are immense.',
+        'A newspaper sells one million copies in a single day.'
     ],
     atomic: [
         'The atom is split. The world holds its breath.',
         'Penicillin saves millions of lives.',
         'The first computer fills an entire room.',
         'Satellites orbit the earth, mapping every coastline.',
-        'A vaccine eradicates a disease for the first time.'
+        'A vaccine eradicates a disease for the first time.',
+        'The first television broadcast reaches one billion viewers.',
+        'A polio vaccine is given to every child in the nation.',
+        'The structure of DNA is discovered. Everything changes.',
+        'A nuclear submarine circumnavigates the globe underwater.',
+        'A spy satellite photographs an army from space.'
     ],
     space: [
         'A human sets foot on another world.',
         'The space station becomes a permanent home.',
         'Telescopes peer back to the first moments of creation.',
         'A probe exits the solar system.',
-        'Children dream of growing up among the stars.'
+        'Children dream of growing up among the stars.',
+        'The first Mars colony broadcasts a message back to Earth.',
+        'A telescope discovers a planet with liquid water.',
+        'Space tourism becomes available to civilians.',
+        'An asteroid is mined for rare minerals.',
+        'The first baby is born in orbit.'
     ],
     digital: [
         'The global network connects every human mind.',
         'An AI writes a symphony overnight.',
         'A breakthrough in fusion energy powers the city.',
         'Every language is translated instantly.',
-        'The genome of every species is catalogued.'
+        'The genome of every species is catalogued.',
+        'An AI diagnoses cancer with higher accuracy than any doctor.',
+        'Climate change is reversed within a generation.',
+        'The first self-replicating nanobots are tested.',
+        'A quantum computer solves a problem in seconds that would take a billion years.',
+        'Every human now carries the sum of human knowledge in their pocket.'
     ],
     type2: [
         'The Dyson Sphere project begins.',
         'Humanity bends the light of the sun.',
         'A second civilization is detected beyond the stars.',
         'The last resource shortage is solved permanently.',
-        'We are no longer alone in the cosmos.'
+        'We are no longer alone in the cosmos.',
+        'A generation ship is launched towards Alpha Centauri.',
+        'The solar system is mapped in perfect detail.',
+        'Post-scarcity economics replaces all former models.',
+        'Humans live without disease, aging gracefully across centuries.',
+        'The signal from the stars is finally understood. It is a greeting.'
     ]
 };
 
@@ -1045,6 +1126,80 @@ function startNewsTicker() {
             showToast(`📰 ${newsQueue.shift()}`, 'news');
         }
     }, 18000); // every 18 seconds
+}
+
+// ---- Prestige Shop ------------------------------------------
+
+const PRESTIGE_SHOP = [
+    { id: 'ps_pop', name: 'Population Surge', emoji: '👥', desc: '+50% population production permanently.', cost: 1, maxLevel: 5, effect: { type: 'resource', res: 'population', perLevel: 0.5 } },
+    { id: 'ps_food', name: 'Fertile Lands', emoji: '🌾', desc: '+50% food production permanently.', cost: 1, maxLevel: 5, effect: { type: 'resource', res: 'food', perLevel: 0.5 } },
+    { id: 'ps_know', name: 'Ancient Wisdom', emoji: '📖', desc: '+50% knowledge production permanently.', cost: 1, maxLevel: 5, effect: { type: 'resource', res: 'knowledge', perLevel: 0.5 } },
+    { id: 'ps_sci', name: 'Scientific Heritage', emoji: '⚗️', desc: '+50% science production permanently.', cost: 1, maxLevel: 5, effect: { type: 'resource', res: 'science', perLevel: 0.5 } },
+    { id: 'ps_click', name: 'Ancestral Strength', emoji: '👊', desc: '+100% click power permanently.', cost: 1, maxLevel: 10, effect: { type: 'click', perLevel: 1.0 } },
+    { id: 'ps_global', name: 'Legacy of Ages', emoji: '🌍', desc: '+25% all production permanently.', cost: 2, maxLevel: 5, effect: { type: 'global', perLevel: 0.25 } },
+    { id: 'ps_offline', name: 'Eternal Memory', emoji: '⏰', desc: 'Offline efficiency +10% (up to 90%).', cost: 2, maxLevel: 4, effect: { type: 'offline', perLevel: 0.1 } },
+    { id: 'ps_event', name: 'Fate\'s Favor', emoji: '🎲', desc: '+15% event buff duration permanently.', cost: 2, maxLevel: 4, effect: { type: 'event_dur', perLevel: 0.15 } },
+    { id: 'ps_culture', name: 'Cultural Memory', emoji: '🎭', desc: '+75% culture production permanently.', cost: 2, maxLevel: 3, effect: { type: 'resource', res: 'culture', perLevel: 0.75 } },
+    { id: 'ps_energy', name: 'Energy Legacy', emoji: '⚡', desc: '+75% energy production permanently.', cost: 2, maxLevel: 3, effect: { type: 'resource', res: 'energy', perLevel: 0.75 } },
+    { id: 'ps_double', name: 'Civilization\'s Echo', emoji: '✨', desc: '×2 all production. The ultimate ascendancy.', cost: 5, maxLevel: 3, effect: { type: 'global', perLevel: 1.0 } },
+    { id: 'ps_start_pop', name: 'Head Start', emoji: '🚀', desc: 'Start with 100 population after prestige.', cost: 1, maxLevel: 5, effect: { type: 'start_bonus', perLevel: 100 } },
+];
+
+function getPrestigePoints() {
+    return Math.max(0, (G.prestigeCount || 0) - getTotalPrestigeSpent());
+}
+
+function getTotalPrestigeSpent() {
+    return PRESTIGE_SHOP.reduce((total, item) => {
+        const level = (G.prestigeShop || {})[item.id] || 0;
+        return total + level * item.cost;
+    }, 0);
+}
+
+function buyPrestigeUpgrade(id) {
+    const item = PRESTIGE_SHOP.find(p => p.id === id);
+    if (!item) return;
+    const level = (G.prestigeShop || {})[item.id] || 0;
+    if (level >= item.maxLevel) return;
+    if (getPrestigePoints() < item.cost) return;
+    if (!G.prestigeShop) G.prestigeShop = {};
+    G.prestigeShop[id] = level + 1;
+    showToast(`✨ ${item.name} upgraded to level ${level + 1}!`, 'milestone');
+    saveGame();
+    updateUI();
+}
+
+function applyPrestigeShopBonuses() {
+    // Called from computeMultipliers - returns additional multiplier data
+    // Actually we apply them directly in computeMultipliers
+}
+
+function renderPrestigeShop() {
+    const grid = document.getElementById('pshGrid');
+    if (!grid) return;
+    const points = getPrestigePoints();
+    document.getElementById('pshPoints').textContent = points;
+
+    grid.innerHTML = '';
+    PRESTIGE_SHOP.forEach(item => {
+        const level = (G.prestigeShop || {})[item.id] || 0;
+        const maxed = level >= item.maxLevel;
+        const canAfford = points >= item.cost && !maxed;
+
+        const card = document.createElement('div');
+        card.className = 'psh-card' + (maxed ? ' maxed' : canAfford ? ' can-afford' : '');
+        card.innerHTML = `
+            <div class="psh-header">
+                <span class="psh-emoji">${item.emoji}</span>
+                <span class="psh-name">${item.name}</span>
+                <span class="psh-level ${maxed ? 'max' : ''}">${level}/${item.maxLevel}</span>
+            </div>
+            <div class="psh-desc">${item.desc}</div>
+            <div class="psh-cost">${maxed ? '✓ Maxed' : `Cost: ${item.cost} AP`}</div>
+        `;
+        if (canAfford) card.addEventListener('click', () => buyPrestigeUpgrade(item.id));
+        grid.appendChild(card);
+    });
 }
 
 // ---- Settings -----------------------------------------------

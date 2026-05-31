@@ -172,6 +172,7 @@
             </button>
             <button class="tab-btn" data-tab="milestones">🏆 Milestones</button>
             <button class="tab-btn" data-tab="stats">📊 Stats</button>
+            <button class="tab-btn hidden" data-tab="prestige-shop" id="prestigeShopTab">✨ Ascendancy</button>
         </nav>
 
         <!-- Buildings Tab -->
@@ -286,6 +287,16 @@
                 <button onclick="document.getElementById('keyHelp').classList.remove('hidden')" class="save-btn">⌨️ Keys</button>
                 <button id="resetBtn" class="reset-btn">Hard Reset</button>
             </div>
+        </section>
+
+        <!-- Prestige Shop Tab -->
+        <section class="tab-content" id="prestige-shop">
+            <div class="prestige-shop-header">
+                <div class="psh-title">✨ Ascendancy Shop</div>
+                <div class="psh-sub">Spend Ascendancy Points earned through prestige on permanent civilization bonuses.</div>
+                <div class="psh-points">You have <span id="pshPoints" style="color:#a78bfa;font-weight:800">0</span> Ascendancy Points</div>
+            </div>
+            <div class="psh-grid" id="pshGrid"></div>
         </section>
 
         <div class="toast-container" id="toastContainer"></div>

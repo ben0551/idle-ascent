@@ -506,6 +506,8 @@ function isUnlockedByAge(ageId) {
     return G.ageIndex >= targetIdx;
 }
 
+let selectedBuilding = null;
+
 function renderBuildings() {
     const grid = document.getElementById('buildingsGrid');
     grid.innerHTML = '';
@@ -520,10 +522,14 @@ function renderBuildings() {
             : bulkBuildingCost(bDef, n);
         const actualN = buyAmount === 'max' ? calcMaxBuy(bDef) : n;
         const affordable = unlocked && actualN > 0 && canAfford(cost);
+        const totalProd = computeBuildingProductionTotal(bDef);
 
         const card = document.createElement('div');
-        card.className = 'building-card' + (unlocked ? (affordable ? ' can-afford' : '') : ' locked');
-        const buyLabel = buyAmount === 'max' ? `Buy Max (${actualN})` : `Buy ×${n}`;
+        const isSelected = selectedBuilding === bDef.id;
+        card.className = 'building-card' +
+            (unlocked ? (affordable ? ' can-afford' : '') : ' locked') +
+            (isSelected ? ' selected' : '');
+
         card.innerHTML = `
             <div class="bc-header">
                 <span class="bc-emoji">${bDef.emoji}</span>
@@ -531,10 +537,25 @@ function renderBuildings() {
                 <span class="bc-owned ${owned > 0 ? 'has-owned' : ''}">${owned}</span>
             </div>
             <div class="bc-desc">${bDef.description}</div>
-            <div class="bc-prod">${prodString(prod)}</div>
+            <div class="bc-prod">${prodString(prod)}<span class="bc-per"> each</span></div>
+            ${owned > 0 ? `<div class="bc-total-prod">Total: ${prodString(totalProd)}</div>` : ''}
             <div class="bc-cost">${unlocked ? costString(cost, affordable) : `🔒 ${AGES.find(a => a.id === bDef.unlockedAtAge)?.name}`}</div>
         `;
-        if (unlocked) card.addEventListener('click', () => purchaseBuilding(bDef.id));
+
+        if (unlocked) {
+            card.addEventListener('click', (e) => {
+                if (e.shiftKey || e.ctrlKey) {
+                    // Info mode: just show panel
+                    selectedBuilding = selectedBuilding === bDef.id ? null : bDef.id;
+                    updateUI();
+                } else {
+                    purchaseBuilding(bDef.id);
+                    // Flash owned count
+                    const ownedEl = card.querySelector('.bc-owned');
+                    if (ownedEl) { ownedEl.classList.add('flash'); setTimeout(() => ownedEl.classList.remove('flash'), 400); }
+                }
+            });
+        }
         grid.appendChild(card);
     });
 }
@@ -547,6 +568,14 @@ function computeBuildingProduction(bDef) {
         const rMult = mults.resources[res] || 1;
         result[res] = base * bMult * rMult;
     });
+    return result;
+}
+
+function computeBuildingProductionTotal(bDef) {
+    const per = computeBuildingProduction(bDef);
+    const owned = G.buildings[bDef.id] || 0;
+    const result = {};
+    Object.entries(per).forEach(([res, val]) => { result[res] = val * owned; });
     return result;
 }
 

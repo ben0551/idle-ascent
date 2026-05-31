@@ -171,6 +171,16 @@ const BUILDINGS = [
         baseCost: { population: 800, food: 50 },
         unlockedAtAge: 'bronze'
     },
+    // Bronze Age extra
+    {
+        id: 'fishing',
+        name: 'Fishing Village',
+        emoji: '🎣',
+        description: 'Coastal settlements harvest the sea.',
+        produces: { food: 25, population: 8 },
+        baseCost: { population: 600 },
+        unlockedAtAge: 'bronze'
+    },
     // Iron Age
     {
         id: 'ironworks',
@@ -197,6 +207,16 @@ const BUILDINGS = [
         description: 'Trains soldiers who protect the settlement.',
         produces: { population: 80 },
         baseCost: { population: 5000 },
+        unlockedAtAge: 'iron'
+    },
+    // Medieval Age extra
+    {
+        id: 'tavern',
+        name: 'Tavern & Inn',
+        emoji: '🍺',
+        description: 'A hub of culture and storytelling.',
+        produces: { culture: 15, population: 60, food: 20 },
+        baseCost: { population: 8000 },
         unlockedAtAge: 'iron'
     },
     // Medieval Age
@@ -235,6 +255,16 @@ const BUILDINGS = [
         produces: { culture: 40, population: 80 },
         baseCost: { population: 50000 },
         unlockedAtAge: 'medieval'
+    },
+    // Industrial bridge
+    {
+        id: 'hospital',
+        name: 'Hospital',
+        emoji: '🏥',
+        description: 'Keeps the workforce healthy and growing.',
+        produces: { population: 300, science: 20 },
+        baseCost: { population: 400000 },
+        unlockedAtAge: 'renaissance'
     },
     // Renaissance
     {

@@ -403,8 +403,25 @@ h1 {
 }
 
 .bc-desc { font-size: 0.75em; color: var(--muted); margin-bottom: 6px; }
-.bc-prod { font-size: 0.75em; color: var(--green); margin-bottom: 4px; }
+.bc-prod { font-size: 0.75em; color: var(--green); margin-bottom: 2px; }
+.bc-per { color: var(--muted); font-size: 0.9em; }
+.bc-total-prod { font-size: 0.74em; color: #60a5fa; margin-bottom: 4px; }
 .bc-cost { font-size: 0.75em; }
+
+.building-card.selected {
+    border-color: var(--age-color);
+    box-shadow: 0 0 16px var(--age-color)33;
+}
+
+.bc-owned.flash {
+    animation: ownedFlash 0.4s ease-out;
+    color: var(--age-color) !important;
+}
+
+@keyframes ownedFlash {
+    0%   { transform: scale(1.4); }
+    100% { transform: scale(1); }
+}
 
 .cost-ok { color: var(--green); }
 .cost-no { color: var(--red); }

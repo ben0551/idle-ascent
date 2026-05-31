@@ -172,6 +172,7 @@ function checkAgeAdvance() {
     if (newIdx > G.ageIndex) {
         G.ageIndex = newIdx;
         const age = AGES[newIdx];
+        age.resources.forEach(res => unlockResource(res));
         applyAgeTheme(age);
         showAgeOverlay(age);
         burstParticles(age.color, 80);
@@ -1403,7 +1404,21 @@ function init() {
     loadGame();
     applyAgeTheme(AGES[G.ageIndex]);
 
-    // Restore unlocked resource chips
+    // Ensure all resources for the current age (and below) are unlocked,
+    // silently fixing any saves that had missing unlocks.
+    for (let i = 0; i <= G.ageIndex; i++) {
+        (AGES[i].resources || []).forEach(res => {
+            if (!G.unlockedResources.includes(res)) G.unlockedResources.push(res);
+        });
+    }
+    // Also apply any unlock_resource effects from purchased research/upgrades
+    [...RESEARCH, ...UPGRADES].forEach(def => {
+        if ((G.research[def.id] || G.upgrades[def.id]) && def.effect?.type === 'unlock_resource') {
+            const res = def.effect.resource;
+            if (!G.unlockedResources.includes(res)) G.unlockedResources.push(res);
+        }
+    });
+
     G.unlockedResources.forEach(res => {
         document.getElementById(`res-${res}`)?.classList.remove('hidden');
     });

@@ -471,7 +471,7 @@ const UPGRADES = [
         id: 'writing',
         name: 'Writing',
         emoji: '📜',
-        description: 'Unlock knowledge production. Click +50%.',
+        description: 'The written word spreads ideas. Click power +50%.',
         cost: { population: 3000 },
         unlockedAtAge: 'bronze',
         effect: { type: 'click', multiplier: 1.5 }
@@ -724,7 +724,7 @@ const RESEARCH = [
         name: 'Herbal Medicine',
         emoji: '🌿',
         description: 'Population cap raised, +10% global production.',
-        cost: { population: 150, knowledge: 5 },
+        cost: { population: 150 },
         unlockedAtAge: 'bronze',
         requires: ['cultivation'],
         effect: { type: 'global', multiplier: 1.1 }

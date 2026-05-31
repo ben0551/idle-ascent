@@ -169,10 +169,16 @@ function checkAgeAdvance() {
     for (let i = AGES.length - 1; i >= 0; i--) {
         if (G.population >= AGES[i].threshold) { newIdx = i; break; }
     }
+
+    // Always ensure all resources up to current age are unlocked.
+    // Runs every tick so it self-heals any broken save state.
+    for (let i = 0; i <= newIdx; i++) {
+        (AGES[i].resources || []).forEach(res => unlockResource(res));
+    }
+
     if (newIdx > G.ageIndex) {
         G.ageIndex = newIdx;
         const age = AGES[newIdx];
-        age.resources.forEach(res => unlockResource(res));
         applyAgeTheme(age);
         showAgeOverlay(age);
         burstParticles(age.color, 80);

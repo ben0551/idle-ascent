@@ -684,7 +684,7 @@ const RESEARCH = [
         name: 'Cultivation',
         emoji: '🌱',
         description: 'Unlock Farming techniques. Enables food resource.',
-        cost: { population: 80, knowledge: 0 },
+        cost: { population: 80 },
         unlockedAtAge: 'stone',
         requires: [],
         effect: { type: 'unlock_resource', resource: 'food' }

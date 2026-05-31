@@ -188,24 +188,52 @@ function checkMilestones() {
     });
 }
 
-// ---- Click Handler ------------------------------------------
+// ---- Click Handler + Combo Streak --------------------------
+
+let clickStreak = 0;
+let streakTimer = null;
+const STREAK_WINDOW = 1200; // ms between clicks to maintain streak
 
 function handleGather() {
+    // Combo streak
+    clickStreak++;
+    clearTimeout(streakTimer);
+    streakTimer = setTimeout(() => { clickStreak = 0; updateStreakDisplay(); }, STREAK_WINDOW);
+    updateStreakDisplay();
+
     const mults = computeMultipliers();
-    const amount = mults.click;
+    const streakBonus = 1 + Math.min(clickStreak * 0.02, 1.0); // up to +100% at 50 combo
+    const amount = mults.click * streakBonus;
+
     G.population += amount;
     G.totalEarned.population += amount;
-    showClickPop(amount);
+    showClickPop(amount, clickStreak);
     updateUI();
 }
 
-function showClickPop(amount) {
+function updateStreakDisplay() {
+    const label = document.getElementById('gatherBonus');
+    const mults = computeMultipliers();
+    if (clickStreak > 2) {
+        const bonus = Math.min(clickStreak * 2, 100);
+        label.innerHTML = `+${fmt(mults.click)} × <span style="color:#ffd700">🔥 ${clickStreak}x combo (+${bonus}%)</span>`;
+    } else {
+        label.textContent = `+${fmt(mults.click)} per click`;
+    }
+}
+
+function showClickPop(amount, streak) {
     const btn = document.getElementById('gatherBtn');
     const pop = document.createElement('div');
     pop.className = 'click-pop';
+    const scale = streak > 10 ? 1.4 : streak > 5 ? 1.2 : 1;
+    pop.style.fontSize = `${scale}em`;
+    pop.style.color = streak > 20 ? '#ffd700' : streak > 10 ? '#f97316' : 'var(--age-color)';
     pop.textContent = `+${fmt(amount)}`;
+    // Random horizontal spread
+    pop.style.left = `${35 + Math.random() * 30}%`;
     btn.appendChild(pop);
-    setTimeout(() => pop.remove(), 800);
+    setTimeout(() => pop.remove(), 900);
 }
 
 // ---- Building Cost ------------------------------------------
@@ -656,7 +684,17 @@ function switchTab(name) {
 function saveGame() {
     try {
         localStorage.setItem('idleAscent_v2', JSON.stringify(G));
+        flashSaveIndicator();
     } catch(e) {}
+}
+
+let _saveFlashTimer = null;
+function flashSaveIndicator() {
+    const badge = document.getElementById('ageBadge');
+    if (!badge) return;
+    badge.setAttribute('data-saved', '1');
+    clearTimeout(_saveFlashTimer);
+    _saveFlashTimer = setTimeout(() => badge.removeAttribute('data-saved'), 1200);
 }
 
 function loadGame() {

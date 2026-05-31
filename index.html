@@ -7,87 +7,185 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Idle Ascent</h1>
-            <p class="subtitle">Rise of Civilization</p>
-        </header>
-
-        <main>
-            <!-- Resource Display -->
-            <section class="resource-panel">
-                <div class="resource">
-                    <div class="resource-value" id="populationDisplay">0</div>
-                    <div class="resource-label">Population</div>
-                    <div class="resource-rate" id="populationRate">+0/s</div>
-                </div>
-            </section>
-
-            <!-- Current Age Display -->
-            <section class="age-panel">
-                <h2 id="currentAge">Stone Age</h2>
-                <p id="ageDescription">Humanity takes its first steps</p>
-                <div class="age-progress">
-                    <div class="progress-bar" id="progressBar"></div>
-                </div>
-                <p id="progressText">0 / 100 to Bronze Age</p>
-            </section>
-
-            <!-- Main Click Area -->
-            <section class="click-area">
-                <button id="clickButton" class="click-button">Gather</button>
-                <p class="click-info">+1 population per click</p>
-            </section>
-
-            <!-- Tabs -->
-            <nav class="tabs">
-                <button class="tab-btn active" data-tab="buildings">Buildings</button>
-                <button class="tab-btn" data-tab="upgrades">Upgrades</button>
-                <button class="tab-btn" data-tab="stats">Stats</button>
-            </nav>
-
-            <!-- Buildings Tab -->
-            <section class="tab-content active" id="buildings">
-                <div class="buildings-grid" id="buildingsGrid">
-                    <!-- Buildings will be generated here -->
-                </div>
-            </section>
-
-            <!-- Upgrades Tab -->
-            <section class="tab-content" id="upgrades">
-                <div class="upgrades-list" id="upgradesList">
-                    <!-- Upgrades will be generated here -->
-                </div>
-            </section>
-
-            <!-- Stats Tab -->
-            <section class="tab-content" id="stats">
-                <div class="stats-list">
-                    <div class="stat">
-                        <span class="stat-label">Total Population Earned:</span>
-                        <span class="stat-value" id="totalEarned">0</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Buildings Owned:</span>
-                        <span class="stat-value" id="buildingsOwned">0</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Time Played:</span>
-                        <span class="stat-value" id="timePlayed">0s</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">Current Age:</span>
-                        <span class="stat-value" id="statAge">Stone Age</span>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <footer>
-            <button id="resetButton" class="reset-button">Reset (Prestige)</button>
-        </footer>
+    <div id="ageOverlay" class="age-overlay hidden">
+        <div class="age-overlay-content">
+            <div class="age-overlay-title" id="overlayTitle"></div>
+            <div class="age-overlay-sub" id="overlaySub"></div>
+        </div>
     </div>
 
+    <div class="container" id="mainContainer">
+        <header id="gameHeader">
+            <div class="header-left">
+                <h1>Idle Ascent</h1>
+            </div>
+            <div class="header-right">
+                <div class="age-badge" id="ageBadge">Stone Age</div>
+            </div>
+        </header>
+
+        <!-- Resources Bar -->
+        <section class="resources-bar" id="resourcesBar">
+            <div class="resource-chip" id="res-population">
+                <span class="res-icon">👥</span>
+                <div class="res-info">
+                    <span class="res-val" id="pop-val">0</span>
+                    <span class="res-rate" id="pop-rate">+0/s</span>
+                </div>
+                <span class="res-label">Population</span>
+            </div>
+            <div class="resource-chip hidden" id="res-food">
+                <span class="res-icon">🌾</span>
+                <div class="res-info">
+                    <span class="res-val" id="food-val">0</span>
+                    <span class="res-rate" id="food-rate">+0/s</span>
+                </div>
+                <span class="res-label">Food</span>
+            </div>
+            <div class="resource-chip hidden" id="res-knowledge">
+                <span class="res-icon">📖</span>
+                <div class="res-info">
+                    <span class="res-val" id="know-val">0</span>
+                    <span class="res-rate" id="know-rate">+0/s</span>
+                </div>
+                <span class="res-label">Knowledge</span>
+            </div>
+            <div class="resource-chip hidden" id="res-science">
+                <span class="res-icon">⚗️</span>
+                <div class="res-info">
+                    <span class="res-val" id="sci-val">0</span>
+                    <span class="res-rate" id="sci-rate">+0/s</span>
+                </div>
+                <span class="res-label">Science</span>
+            </div>
+            <div class="resource-chip hidden" id="res-culture">
+                <span class="res-icon">🎭</span>
+                <div class="res-info">
+                    <span class="res-val" id="cult-val">0</span>
+                    <span class="res-rate" id="cult-rate">+0/s</span>
+                </div>
+                <span class="res-label">Culture</span>
+            </div>
+            <div class="resource-chip hidden" id="res-energy">
+                <span class="res-icon">⚡</span>
+                <div class="res-info">
+                    <span class="res-val" id="energy-val">0</span>
+                    <span class="res-rate" id="energy-rate">+0/s</span>
+                </div>
+                <span class="res-label">Energy</span>
+            </div>
+        </section>
+
+        <!-- Age Progress -->
+        <section class="age-progress-bar">
+            <div class="age-progress-inner">
+                <span class="age-progress-label" id="ageProgressLabel">Stone Age</span>
+                <div class="age-track">
+                    <div class="age-fill" id="ageFill"></div>
+                </div>
+                <span class="age-progress-next" id="ageProgressNext">Bronze Age</span>
+            </div>
+            <div class="age-progress-text" id="ageProgressText">0 / 100</div>
+        </section>
+
+        <!-- Main Click -->
+        <section class="click-section">
+            <button id="gatherBtn" class="gather-btn">
+                <span class="gather-icon" id="gatherIcon">🌿</span>
+                <span class="gather-label" id="gatherLabel">Gather</span>
+            </button>
+            <div class="gather-bonus" id="gatherBonus">+1 per click</div>
+        </section>
+
+        <!-- Tabs -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="buildings">
+                <span>🏗️</span> Buildings
+            </button>
+            <button class="tab-btn" data-tab="research">
+                <span>🔬</span> Research
+                <span class="tab-badge hidden" id="researchBadge">!</span>
+            </button>
+            <button class="tab-btn" data-tab="upgrades">
+                <span>⬆️</span> Upgrades
+                <span class="tab-badge hidden" id="upgradesBadge">!</span>
+            </button>
+            <button class="tab-btn" data-tab="milestones">
+                <span>🏆</span> Milestones
+            </button>
+            <button class="tab-btn" data-tab="stats">
+                <span>📊</span> Stats
+            </button>
+        </nav>
+
+        <!-- Buildings Tab -->
+        <section class="tab-content active" id="buildings">
+            <div class="buildings-grid" id="buildingsGrid"></div>
+        </section>
+
+        <!-- Research Tab -->
+        <section class="tab-content" id="research">
+            <p class="tab-intro">Research advances your civilization's capabilities.</p>
+            <div class="research-grid" id="researchGrid"></div>
+        </section>
+
+        <!-- Upgrades Tab -->
+        <section class="tab-content" id="upgrades">
+            <p class="tab-intro">Upgrade your workers and infrastructure.</p>
+            <div class="upgrades-list" id="upgradesList"></div>
+        </section>
+
+        <!-- Milestones Tab -->
+        <section class="tab-content" id="milestones">
+            <div class="milestones-list" id="milestonesList"></div>
+        </section>
+
+        <!-- Stats Tab -->
+        <section class="tab-content" id="stats">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-label">Total Population Earned</div>
+                    <div class="stat-val" id="statTotalPop">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🏗️</div>
+                    <div class="stat-label">Buildings Owned</div>
+                    <div class="stat-val" id="statBuildings">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔬</div>
+                    <div class="stat-label">Researches Done</div>
+                    <div class="stat-val" id="statResearches">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⬆️</div>
+                    <div class="stat-label">Upgrades Bought</div>
+                    <div class="stat-val" id="statUpgrades">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-label">Milestones Reached</div>
+                    <div class="stat-val" id="statMilestones">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-label">Time Played</div>
+                    <div class="stat-val" id="statTime">0s</div>
+                </div>
+            </div>
+            <div class="save-controls">
+                <button id="exportBtn" class="save-btn">Export Save</button>
+                <button id="importBtn" class="save-btn">Import Save</button>
+                <button id="resetBtn" class="reset-btn">Reset Game</button>
+            </div>
+        </section>
+
+        <!-- Notification Toast -->
+        <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <script src="data.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

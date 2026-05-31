@@ -1,397 +1,589 @@
-// Game State
-const game = {
+// ============================================================
+// IDLE ASCENT — Core Engine
+// ============================================================
+
+const TICK_MS = 100; // 10 ticks/second
+const COST_SCALE = 1.15;
+
+// ---- State --------------------------------------------------
+
+const defaultState = () => ({
     population: 0,
-    totalEarned: 0,
+    food: 0,
+    knowledge: 0,
+    science: 0,
+    culture: 0,
+    energy: 0,
+
+    totalEarned: { population: 0, food: 0, knowledge: 0, science: 0, culture: 0, energy: 0 },
+
+    buildings: {},        // id -> count
+    upgrades: {},         // id -> bool
+    research: {},         // id -> bool
+    milestones: {},       // id -> bool
+
+    ageIndex: 0,
+    clickPower: 1,
     startTime: Date.now(),
+    lastTick: Date.now(),
 
-    // Resource production
-    productionPerSecond: 0,
+    // Unlocked resources
+    unlockedResources: ['population']
+});
 
-    // Age System
-    currentAgeIndex: 0,
-    populationToNextAge: 100,
+let G = defaultState();
 
-    // Owned buildings
-    buildings: {},
+// ---- Computed multipliers -----------------------------------
 
-    // Purchased upgrades
-    upgrades: {}
-};
+function computeMultipliers() {
+    // Returns { global, click, buildings:{}, resources:{} }
+    const m = {
+        global: 1,
+        click: G.clickPower,
+        buildings: {},
+        resources: {}
+    };
 
-// Age definitions with descriptions and progression
-const ages = [
-    { name: 'Stone Age', description: 'Humanity takes its first steps', threshold: 0 },
-    { name: 'Bronze Age', description: 'Discovery of metal working', threshold: 100 },
-    { name: 'Iron Age', description: 'Superior tools emerge', threshold: 1000 },
-    { name: 'Medieval Age', description: 'Rise of kingdoms and culture', threshold: 10000 },
-    { name: 'Renaissance', description: 'Rebirth of knowledge and art', threshold: 100000 },
-    { name: 'Industrial Age', description: 'Machines transform society', threshold: 1000000 },
-    { name: 'Information Age', description: 'Digital revolution', threshold: 10000000 },
-    { name: 'Type II Civilization', description: 'Planetary mastery achieved', threshold: 100000000 }
-];
+    const allDefs = [...UPGRADES, ...RESEARCH];
 
-// Building definitions
-const buildingDefinitions = {
-    hunter: {
-        name: 'Hunter',
-        description: 'Gathers food and resources',
-        baseProduction: 1,
-        baseCost: 10,
-        unlockedAt: 0,
-        emoji: '🏹'
-    },
-    farmer: {
-        name: 'Farmer',
-        description: 'Cultivates crops',
-        baseProduction: 5,
-        baseCost: 100,
-        unlockedAt: 100,
-        emoji: '🌾'
-    },
-    blacksmith: {
-        name: 'Blacksmith',
-        description: 'Forges tools and weapons',
-        baseProduction: 25,
-        baseCost: 500,
-        unlockedAt: 1000,
-        emoji: '⚒️'
-    },
-    scholar: {
-        name: 'Scholar',
-        description: 'Advances knowledge',
-        baseProduction: 100,
-        baseCost: 5000,
-        unlockedAt: 10000,
-        emoji: '📚'
-    },
-    factory: {
-        name: 'Factory',
-        description: 'Mass produces goods',
-        baseProduction: 500,
-        baseCost: 100000,
-        unlockedAt: 1000000,
-        emoji: '🏭'
-    },
-    datacenter: {
-        name: 'Data Center',
-        description: 'Processes information',
-        baseProduction: 2500,
-        baseCost: 10000000,
-        unlockedAt: 10000000,
-        emoji: '🖥️'
-    }
-};
+    allDefs.forEach(def => {
+        const purchased = G.upgrades[def.id] || G.research[def.id];
+        if (!purchased) return;
+        const e = def.effect;
+        if (!e) return;
 
-// Upgrade definitions
-const upgradeDefinitions = [
-    {
-        id: 'fire',
-        name: 'Discover Fire',
-        description: 'Hunters are 50% more efficient',
-        cost: 50,
-        unlockedAt: 0,
-        effect: { building: 'hunter', multiplier: 1.5 }
-    },
-    {
-        id: 'tools',
-        name: 'Craft Tools',
-        description: 'All workers are 25% more efficient',
-        cost: 200,
-        unlockedAt: 100,
-        effect: { global: true, multiplier: 1.25 }
-    },
-    {
-        id: 'agriculture',
-        name: 'Agriculture Revolution',
-        description: 'Farmers are 100% more efficient',
-        cost: 500,
-        unlockedAt: 100,
-        effect: { building: 'farmer', multiplier: 2.0 }
-    },
-    {
-        id: 'metalworking',
-        name: 'Metal Working',
-        description: 'Blacksmiths are 100% more efficient',
-        cost: 5000,
-        unlockedAt: 1000,
-        effect: { building: 'blacksmith', multiplier: 2.0 }
-    },
-    {
-        id: 'literacy',
-        name: 'Written Language',
-        description: 'Scholars are 100% more efficient',
-        cost: 50000,
-        unlockedAt: 10000,
-        effect: { building: 'scholar', multiplier: 2.0 }
-    },
-    {
-        id: 'industrialization',
-        name: 'Mechanization',
-        description: 'Factories are 100% more efficient',
-        cost: 1000000,
-        unlockedAt: 1000000,
-        effect: { building: 'factory', multiplier: 2.0 }
-    }
-];
-
-// Initialize game
-function initGame() {
-    // Initialize buildings
-    Object.keys(buildingDefinitions).forEach(key => {
-        game.buildings[key] = 0;
-    });
-
-    // Initialize upgrades
-    upgradeDefinitions.forEach(upgrade => {
-        game.upgrades[upgrade.id] = false;
-    });
-
-    loadGame();
-    updateUI();
-    setupEventListeners();
-    startGameLoop();
-}
-
-// Event listeners
-function setupEventListeners() {
-    document.getElementById('clickButton').addEventListener('click', handleClick);
-
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
-
-    document.getElementById('resetButton').addEventListener('click', handleReset);
-}
-
-function handleClick() {
-    game.population += 1;
-    game.totalEarned += 1;
-    updateUI();
-}
-
-function switchTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-
-    // Show selected tab
-    document.getElementById(tabName).classList.add('active');
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-}
-
-function handleReset() {
-    if (confirm('Reset your progress? You will keep some bonus multipliers based on total population earned.')) {
-        // TODO: Implement prestige system
-        game.population = 0;
-        game.buildings = {};
-        Object.keys(buildingDefinitions).forEach(key => {
-            game.buildings[key] = 0;
-        });
-        game.currentAgeIndex = 0;
-        saveGame();
-        updateUI();
-    }
-}
-
-// Game Loop
-function startGameLoop() {
-    setInterval(() => {
-        // Calculate production
-        let production = 0;
-        let multiplier = 1;
-
-        // Apply global upgrades
-        if (game.upgrades['tools']) multiplier *= 1.25;
-
-        // Calculate production from buildings
-        Object.keys(game.buildings).forEach(buildingKey => {
-            const count = game.buildings[buildingKey];
-            const def = buildingDefinitions[buildingKey];
-            let buildingProduction = def.baseProduction * count * multiplier;
-
-            // Apply building-specific upgrades
-            Object.values(game.upgrades).forEach((_, upgradeKey) => {
-                const upgrade = upgradeDefinitions.find(u => u.id === upgradeKey);
-                if (upgrade && game.upgrades[upgrade.id] && upgrade.effect.building === buildingKey) {
-                    buildingProduction *= upgrade.effect.multiplier;
-                }
+        if (e.type === 'global') m.global *= e.multiplier;
+        if (e.type === 'click') m.click *= e.multiplier;
+        if (e.type === 'building') {
+            m.buildings[e.building] = (m.buildings[e.building] || 1) * e.multiplier;
+        }
+        if (e.type === 'multi-building') {
+            e.buildings.forEach(b => {
+                m.buildings[b] = (m.buildings[b] || 1) * e.multiplier;
             });
+        }
+        if (e.type === 'resource') {
+            m.resources[e.resource] = (m.resources[e.resource] || 1) * e.multiplier;
+        }
+        if (e.type === 'multi-resource') {
+            e.resources.forEach(r => {
+                m.resources[r] = (m.resources[r] || 1) * e.multiplier;
+            });
+        }
+    });
 
-            production += buildingProduction;
-        });
-
-        game.productionPerSecond = production;
-        game.population += production / 10; // 10 updates per second
-        game.totalEarned += production / 10;
-
-        updateUI();
-    }, 100);
-
-    // Update time played
-    setInterval(() => {
-        updateUI();
-    }, 1000);
+    return m;
 }
 
-// Building Purchase
-function purchaseBuilding(buildingKey) {
-    const def = buildingDefinitions[buildingKey];
-    const cost = calculateBuildingCost(buildingKey);
+function computeProduction() {
+    // Returns per-second production for each resource
+    const mults = computeMultipliers();
+    const prod = { population: 0, food: 0, knowledge: 0, science: 0, culture: 0, energy: 0 };
 
-    if (game.population >= cost) {
-        game.population -= cost;
-        game.buildings[buildingKey]++;
+    BUILDINGS.forEach(bDef => {
+        const count = G.buildings[bDef.id] || 0;
+        if (count === 0) return;
+        const bMult = (mults.buildings[bDef.id] || 1) * mults.global;
+        Object.entries(bDef.produces).forEach(([res, base]) => {
+            const rMult = mults.resources[res] || 1;
+            prod[res] = (prod[res] || 0) + base * count * bMult * rMult;
+        });
+    });
+
+    return prod;
+}
+
+// ---- Game Loop ----------------------------------------------
+
+let lastProduction = {};
+
+function tick() {
+    const now = Date.now();
+    const dt = (now - G.lastTick) / 1000; // seconds elapsed
+    G.lastTick = now;
+
+    const prod = computeProduction();
+    lastProduction = prod;
+
+    Object.keys(prod).forEach(res => {
+        if (!G.unlockedResources.includes(res)) return;
+        G[res] = (G[res] || 0) + prod[res] * dt;
+        G.totalEarned[res] = (G.totalEarned[res] || 0) + prod[res] * dt;
+    });
+
+    checkAgeAdvance();
+    checkMilestones();
+    updateUI();
+}
+
+function startLoop() {
+    setInterval(tick, TICK_MS);
+    setInterval(saveGame, 5000);
+}
+
+// ---- Age System ---------------------------------------------
+
+function checkAgeAdvance() {
+    let newIdx = 0;
+    for (let i = AGES.length - 1; i >= 0; i--) {
+        if (G.population >= AGES[i].threshold) { newIdx = i; break; }
+    }
+    if (newIdx > G.ageIndex) {
+        G.ageIndex = newIdx;
+        const age = AGES[newIdx];
+        applyAgeTheme(age);
+        showAgeOverlay(age);
         saveGame();
-        updateUI();
     }
 }
 
-function calculateBuildingCost(buildingKey) {
-    const def = buildingDefinitions[buildingKey];
-    const owned = game.buildings[buildingKey] || 0;
-    return Math.ceil(def.baseCost * Math.pow(1.15, owned));
+function applyAgeTheme(age) {
+    document.documentElement.style.setProperty('--age-color', age.color);
+    document.documentElement.style.setProperty('--age-hue', age.hue);
+    document.body.style.background = age.bg;
+    document.getElementById('gatherIcon').textContent = age.gatherIcon;
+    document.getElementById('gatherLabel').textContent = age.gatherLabel;
+    document.getElementById('ageBadge').textContent = age.name;
+    document.getElementById('ageBadge').style.background = age.color;
+    document.getElementById('ageBadge').style.color = '#000';
 }
 
-// Upgrade Purchase
-function purchaseUpgrade(upgradeId) {
-    const upgrade = upgradeDefinitions.find(u => u.id === upgradeId);
+function showAgeOverlay(age) {
+    const overlay = document.getElementById('ageOverlay');
+    document.getElementById('overlayTitle').textContent = `⚡ ${age.name}`;
+    document.getElementById('overlaySub').textContent = age.description;
+    overlay.classList.remove('hidden');
+    setTimeout(() => overlay.classList.add('hidden'), 3500);
+}
 
-    if (!upgrade || game.upgrades[upgradeId]) return;
-    if (game.population < upgrade.cost) return;
+// ---- Milestone Checks ---------------------------------------
 
-    game.population -= upgrade.cost;
-    game.upgrades[upgradeId] = true;
+function checkMilestones() {
+    MILESTONES.forEach(m => {
+        if (!G.milestones[m.id] && m.condition(G)) {
+            G.milestones[m.id] = true;
+            showToast(`🏆 ${m.name}: ${m.description}`, 'milestone');
+        }
+    });
+}
+
+// ---- Click Handler ------------------------------------------
+
+function handleGather() {
+    const mults = computeMultipliers();
+    const amount = mults.click;
+    G.population += amount;
+    G.totalEarned.population += amount;
+    showClickPop(amount);
+    updateUI();
+}
+
+function showClickPop(amount) {
+    const btn = document.getElementById('gatherBtn');
+    const pop = document.createElement('div');
+    pop.className = 'click-pop';
+    pop.textContent = `+${fmt(amount)}`;
+    btn.appendChild(pop);
+    setTimeout(() => pop.remove(), 800);
+}
+
+// ---- Building Cost ------------------------------------------
+
+function buildingCost(bDef) {
+    const owned = G.buildings[bDef.id] || 0;
+    const cost = {};
+    Object.entries(bDef.baseCost).forEach(([res, base]) => {
+        cost[res] = Math.ceil(base * Math.pow(COST_SCALE, owned));
+    });
+    return cost;
+}
+
+function canAfford(costObj) {
+    return Object.entries(costObj).every(([res, amt]) => (G[res] || 0) >= amt);
+}
+
+function deductCost(costObj) {
+    Object.entries(costObj).forEach(([res, amt]) => { G[res] -= amt; });
+}
+
+function purchaseBuilding(id) {
+    const bDef = BUILDINGS.find(b => b.id === id);
+    if (!bDef) return;
+    const cost = buildingCost(bDef);
+    if (!canAfford(cost)) return;
+    deductCost(cost);
+    G.buildings[id] = (G.buildings[id] || 0) + 1;
     saveGame();
     updateUI();
 }
 
-// Age System
-function updateAge() {
-    const newAgeIndex = ages.findIndex(age => game.population >= age.threshold);
-    if (newAgeIndex > game.currentAgeIndex && newAgeIndex !== -1) {
-        game.currentAgeIndex = newAgeIndex;
-        saveGame();
+function purchaseUpgrade(id) {
+    const def = UPGRADES.find(u => u.id === id);
+    if (!def || G.upgrades[id]) return;
+    if (!canAfford(def.cost)) return;
+    deductCost(def.cost);
+    G.upgrades[id] = true;
+    if (def.effect?.type === 'unlock_resource') unlockResource(def.effect.resource);
+    saveGame();
+    updateUI();
+}
+
+function purchaseResearch(id) {
+    const def = RESEARCH.find(r => r.id === id);
+    if (!def || G.research[id]) return;
+    const prereqsMet = def.requires.every(req => G.research[req]);
+    if (!prereqsMet) return;
+    if (!canAfford(def.cost)) return;
+    deductCost(def.cost);
+    G.research[id] = true;
+    if (def.effect?.type === 'unlock_resource') unlockResource(def.effect.resource);
+    showToast(`🔬 Researched: ${def.name}`, 'research');
+    saveGame();
+    updateUI();
+}
+
+function unlockResource(res) {
+    if (!G.unlockedResources.includes(res)) {
+        G.unlockedResources.push(res);
+        document.getElementById(`res-${res}`)?.classList.remove('hidden');
+        showToast(`✨ Unlocked: ${res.charAt(0).toUpperCase() + res.slice(1)}!`, 'unlock');
     }
 }
 
-// UI Updates
-function updateUI() {
-    // Update population display
-    document.getElementById('populationDisplay').textContent = Math.floor(game.population).toLocaleString();
-    document.getElementById('populationRate').textContent = `+${game.productionPerSecond.toFixed(1)}/s`;
-    document.getElementById('totalEarned').textContent = Math.floor(game.totalEarned).toLocaleString();
+// ---- Number Formatter ---------------------------------------
 
-    // Update age
-    updateAge();
-    const currentAge = ages[game.currentAgeIndex];
-    document.getElementById('currentAge').textContent = currentAge.name;
-    document.getElementById('ageDescription').textContent = currentAge.description;
-    document.getElementById('statAge').textContent = currentAge.name;
-
-    // Update progress bar
-    const nextAge = ages[Math.min(game.currentAgeIndex + 1, ages.length - 1)];
-    const prevAge = ages[game.currentAgeIndex];
-    const progress = Math.min((game.population - prevAge.threshold) / (nextAge.threshold - prevAge.threshold), 1) * 100;
-    document.getElementById('progressBar').style.width = progress + '%';
-    document.getElementById('progressText').textContent =
-        `${Math.floor(game.population).toLocaleString()} / ${nextAge.threshold.toLocaleString()} to ${nextAge.name}`;
-
-    // Update time played
-    const timeSeconds = Math.floor((Date.now() - game.startTime) / 1000);
-    document.getElementById('timePlayed').textContent = formatTime(timeSeconds);
-
-    // Update buildings
-    updateBuildingsUI();
-
-    // Update upgrades
-    updateUpgradesUI();
-
-    // Update stats
-    document.getElementById('buildingsOwned').textContent =
-        Object.values(game.buildings).reduce((a, b) => a + b, 0);
+function fmt(n) {
+    if (n === undefined || n === null) return '0';
+    n = Math.floor(n);
+    if (n < 1000) return n.toString();
+    if (n < 1e6) return (n / 1e3).toFixed(1) + 'K';
+    if (n < 1e9) return (n / 1e6).toFixed(2) + 'M';
+    if (n < 1e12) return (n / 1e9).toFixed(2) + 'B';
+    if (n < 1e15) return (n / 1e12).toFixed(2) + 'T';
+    return (n / 1e15).toFixed(2) + 'Q';
 }
 
-function updateBuildingsUI() {
+function fmtRate(n) {
+    if (!n || n < 0.01) return '+0/s';
+    return `+${fmt(n)}/s`;
+}
+
+function fmtTime(ms) {
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `${s}s`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+    return `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h`;
+}
+
+// ---- UI Updaters --------------------------------------------
+
+let activeTab = 'buildings';
+
+function updateUI() {
+    const age = AGES[G.ageIndex];
+    const prod = lastProduction;
+
+    // Resources
+    const RES = ['population', 'food', 'knowledge', 'science', 'culture', 'energy'];
+    RES.forEach(res => {
+        const chip = document.getElementById(`res-${res}`);
+        if (!chip) return;
+        if (G.unlockedResources.includes(res)) chip.classList.remove('hidden');
+        document.getElementById(`${res.slice(0, 3)}-val`).textContent = fmt(G[res]);
+        document.getElementById(`${res.slice(0, 3)}-rate`).textContent = fmtRate(prod[res] || 0);
+    });
+    // special: population -> pop, knowledge -> know etc - fix IDs
+    document.getElementById('pop-val').textContent = fmt(G.population);
+    document.getElementById('pop-rate').textContent = fmtRate(prod.population || 0);
+    document.getElementById('food-val').textContent = fmt(G.food);
+    document.getElementById('food-rate').textContent = fmtRate(prod.food || 0);
+    document.getElementById('know-val').textContent = fmt(G.knowledge);
+    document.getElementById('know-rate').textContent = fmtRate(prod.knowledge || 0);
+    document.getElementById('sci-val').textContent = fmt(G.science);
+    document.getElementById('sci-rate').textContent = fmtRate(prod.science || 0);
+    document.getElementById('cult-val').textContent = fmt(G.culture);
+    document.getElementById('cult-rate').textContent = fmtRate(prod.culture || 0);
+    document.getElementById('energy-val').textContent = fmt(G.energy);
+    document.getElementById('energy-rate').textContent = fmtRate(prod.energy || 0);
+
+    // Age progress
+    const nextAge = AGES[Math.min(G.ageIndex + 1, AGES.length - 1)];
+    const curAge = AGES[G.ageIndex];
+    const range = nextAge.threshold - curAge.threshold;
+    const prog = range === 0 ? 100 : Math.min(((G.population - curAge.threshold) / range) * 100, 100);
+    document.getElementById('ageFill').style.width = prog + '%';
+    document.getElementById('ageProgressLabel').textContent = curAge.name;
+    document.getElementById('ageProgressNext').textContent = nextAge.name;
+    document.getElementById('ageProgressText').textContent =
+        G.ageIndex >= AGES.length - 1
+            ? '🎉 Max Age Reached!'
+            : `${fmt(G.population)} / ${fmt(nextAge.threshold)}`;
+
+    // Gather bonus
+    const mults = computeMultipliers();
+    document.getElementById('gatherBonus').textContent = `+${fmt(mults.click)} per click`;
+
+    // Notification badges
+    const availableUpgrades = UPGRADES.filter(u => !G.upgrades[u.id] && isUnlockedByAge(u.unlockedAtAge) && canAfford(u.cost));
+    document.getElementById('upgradesBadge').classList.toggle('hidden', availableUpgrades.length === 0);
+
+    const availableResearch = RESEARCH.filter(r =>
+        !G.research[r.id] &&
+        isUnlockedByAge(r.unlockedAtAge) &&
+        r.requires.every(req => G.research[req]) &&
+        canAfford(r.cost)
+    );
+    document.getElementById('researchBadge').classList.toggle('hidden', availableResearch.length === 0);
+
+    // Active tab content
+    if (activeTab === 'buildings') renderBuildings();
+    if (activeTab === 'research') renderResearch();
+    if (activeTab === 'upgrades') renderUpgrades();
+    if (activeTab === 'milestones') renderMilestones();
+    if (activeTab === 'stats') renderStats();
+}
+
+function isUnlockedByAge(ageId) {
+    const targetIdx = AGES.findIndex(a => a.id === ageId);
+    return G.ageIndex >= targetIdx;
+}
+
+function renderBuildings() {
     const grid = document.getElementById('buildingsGrid');
     grid.innerHTML = '';
+    const currentAge = AGES[G.ageIndex];
 
-    Object.entries(buildingDefinitions).forEach(([key, def]) => {
-        const unlocked = game.population >= def.unlockedAt;
-        const cost = calculateBuildingCost(key);
-        const owned = game.buildings[key] || 0;
-        const canAfford = game.population >= cost;
+    BUILDINGS.forEach(bDef => {
+        const unlocked = isUnlockedByAge(bDef.unlockedAtAge);
+        const cost = buildingCost(bDef);
+        const affordable = canAfford(cost);
+        const owned = G.buildings[bDef.id] || 0;
+        const prod = computeBuildingProduction(bDef);
 
         const card = document.createElement('div');
-        card.className = `building-card ${!unlocked ? 'locked' : canAfford ? 'available' : ''}`;
+        card.className = 'building-card' + (unlocked ? (affordable ? ' can-afford' : '') : ' locked');
         card.innerHTML = `
-            <div class="building-name">${def.emoji} ${def.name}</div>
-            <div class="building-cost">Cost: ${cost.toLocaleString()}</div>
-            <div class="building-income">+${def.baseProduction}/s per unit</div>
-            <div class="building-owned">Owned: ${owned}</div>
-            ${!unlocked ? `<div class="building-lock-reason">Unlock at ${def.unlockedAt.toLocaleString()} population</div>` : ''}
+            <div class="bc-header">
+                <span class="bc-emoji">${bDef.emoji}</span>
+                <span class="bc-name">${bDef.name}</span>
+                <span class="bc-owned ${owned > 0 ? 'has-owned' : ''}">${owned}</span>
+            </div>
+            <div class="bc-desc">${bDef.description}</div>
+            <div class="bc-prod">${prodString(prod)}</div>
+            <div class="bc-cost">${unlocked ? costString(cost, affordable) : `🔒 Unlocks in ${AGES.find(a => a.id === bDef.unlockedAtAge)?.name}`}</div>
         `;
-
-        if (unlocked) {
-            card.addEventListener('click', () => purchaseBuilding(key));
-        }
-
+        if (unlocked) card.addEventListener('click', () => purchaseBuilding(bDef.id));
         grid.appendChild(card);
     });
 }
 
-function updateUpgradesUI() {
+function computeBuildingProduction(bDef) {
+    const mults = computeMultipliers();
+    const bMult = (mults.buildings[bDef.id] || 1) * mults.global;
+    const result = {};
+    Object.entries(bDef.produces).forEach(([res, base]) => {
+        const rMult = mults.resources[res] || 1;
+        result[res] = base * bMult * rMult;
+    });
+    return result;
+}
+
+function prodString(prod) {
+    return Object.entries(prod).map(([res, val]) => {
+        const icons = { population: '👥', food: '🌾', knowledge: '📖', science: '⚗️', culture: '🎭', energy: '⚡' };
+        return `${icons[res] || ''} ${fmt(val)}/s`;
+    }).join(' ');
+}
+
+function costString(costObj, affordable) {
+    const icons = { population: '👥', food: '🌾', knowledge: '📖', science: '⚗️', culture: '🎭', energy: '⚡' };
+    return Object.entries(costObj).map(([res, amt]) => {
+        const have = G[res] || 0;
+        const ok = have >= amt;
+        return `<span class="${ok ? 'cost-ok' : 'cost-no'}">${icons[res]} ${fmt(amt)}</span>`;
+    }).join(' ');
+}
+
+function renderResearch() {
+    const grid = document.getElementById('researchGrid');
+    grid.innerHTML = '';
+
+    RESEARCH.forEach(def => {
+        const unlocked = isUnlockedByAge(def.unlockedAtAge);
+        const done = G.research[def.id];
+        const prereqsMet = def.requires.every(req => G.research[req]);
+        const affordable = canAfford(def.cost);
+        const available = unlocked && prereqsMet && !done;
+
+        const card = document.createElement('div');
+        card.className = 'research-card' + (done ? ' done' : available ? (affordable ? ' can-afford' : '') : ' locked');
+        card.innerHTML = `
+            <div class="rc-header">
+                <span class="rc-emoji">${def.emoji}</span>
+                <span class="rc-name">${def.name}</span>
+                ${done ? '<span class="rc-done-badge">✓</span>' : ''}
+            </div>
+            <div class="rc-desc">${def.description}</div>
+            ${def.requires.length ? `<div class="rc-requires">Requires: ${def.requires.map(r => {
+                const rd = RESEARCH.find(x => x.id === r);
+                return `<span class="${G.research[r] ? 'req-met' : 'req-unmet'}">${rd?.name || r}</span>`;
+            }).join(', ')}</div>` : ''}
+            <div class="rc-cost">${done ? 'Researched' : (unlocked ? costString(def.cost, affordable) : `🔒 ${AGES.find(a => a.id === def.unlockedAtAge)?.name}`)}</div>
+        `;
+        if (available) card.addEventListener('click', () => purchaseResearch(def.id));
+        grid.appendChild(card);
+    });
+}
+
+function renderUpgrades() {
     const list = document.getElementById('upgradesList');
     list.innerHTML = '';
 
-    upgradeDefinitions.forEach(upgrade => {
-        const unlocked = game.population >= upgrade.unlockedAt;
-        const purchased = game.upgrades[upgrade.id];
-        const canAfford = game.population >= upgrade.cost && !purchased;
+    UPGRADES.forEach(def => {
+        const unlocked = isUnlockedByAge(def.unlockedAtAge);
+        const done = G.upgrades[def.id];
+        const affordable = !done && canAfford(def.cost);
 
         const card = document.createElement('div');
-        card.className = `upgrade-card ${!unlocked ? 'locked' : purchased ? 'purchased' : canAfford ? 'available' : ''}`;
+        card.className = 'upgrade-card' + (done ? ' done' : (!unlocked ? ' locked' : affordable ? ' can-afford' : ''));
         card.innerHTML = `
-            <div class="upgrade-header">
-                <span class="upgrade-name">${upgrade.name}</span>
-                <span class="upgrade-cost">${upgrade.cost.toLocaleString()}</span>
+            <div class="uc-header">
+                <span class="uc-emoji">${def.emoji}</span>
+                <span class="uc-name">${def.name}</span>
+                ${done ? '<span class="uc-done-badge">✓</span>' : ''}
             </div>
-            <div class="upgrade-description">${upgrade.description}</div>
-            ${purchased ? `<div class="upgrade-status">✓ Purchased</div>` : ''}
-            ${!unlocked ? `<div class="upgrade-status">Unlock at ${upgrade.unlockedAt.toLocaleString()}</div>` : ''}
+            <div class="uc-desc">${def.description}</div>
+            <div class="uc-cost">${done ? 'Purchased' : (unlocked ? costString(def.cost, affordable) : `🔒 ${AGES.find(a => a.id === def.unlockedAtAge)?.name}`)}</div>
         `;
-
-        if (unlocked && !purchased) {
-            card.addEventListener('click', () => purchaseUpgrade(upgrade.id));
-        }
-
+        if (unlocked && !done) card.addEventListener('click', () => purchaseUpgrade(def.id));
         list.appendChild(card);
     });
 }
 
-function formatTime(seconds) {
-    if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-    return `${Math.floor(seconds / 86400)}d`;
+function renderMilestones() {
+    const list = document.getElementById('milestonesList');
+    list.innerHTML = '';
+    MILESTONES.forEach(m => {
+        const achieved = G.milestones[m.id];
+        const card = document.createElement('div');
+        card.className = 'milestone-card' + (achieved ? ' achieved' : '');
+        card.innerHTML = `
+            <span class="mc-emoji">${m.emoji}</span>
+            <div class="mc-info">
+                <div class="mc-name">${m.name}</div>
+                <div class="mc-desc">${m.description}</div>
+            </div>
+            ${achieved ? '<span class="mc-check">✓</span>' : '<span class="mc-lock">🔒</span>'}
+        `;
+        list.appendChild(card);
+    });
 }
 
-// Save/Load
+function renderStats() {
+    const elapsed = Date.now() - G.startTime;
+    document.getElementById('statTotalPop').textContent = fmt(G.totalEarned.population || 0);
+    document.getElementById('statBuildings').textContent = Object.values(G.buildings).reduce((a, b) => a + b, 0);
+    document.getElementById('statResearches').textContent = Object.values(G.research).filter(Boolean).length;
+    document.getElementById('statUpgrades').textContent = Object.values(G.upgrades).filter(Boolean).length;
+    document.getElementById('statMilestones').textContent = Object.values(G.milestones).filter(Boolean).length;
+    document.getElementById('statTime').textContent = fmtTime(elapsed);
+}
+
+// ---- Toast --------------------------------------------------
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, 3000);
+}
+
+// ---- Tabs ---------------------------------------------------
+
+function switchTab(name) {
+    activeTab = name;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === name));
+    updateUI();
+}
+
+// ---- Save/Load/Reset ----------------------------------------
+
 function saveGame() {
-    localStorage.setItem('idleAscent', JSON.stringify(game));
+    try {
+        localStorage.setItem('idleAscent_v2', JSON.stringify(G));
+    } catch(e) {}
 }
 
 function loadGame() {
-    const saved = localStorage.getItem('idleAscent');
-    if (saved) {
-        const data = JSON.parse(saved);
-        Object.assign(game, data);
+    try {
+        const raw = localStorage.getItem('idleAscent_v2');
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        G = Object.assign(defaultState(), saved);
+    } catch(e) {}
+}
+
+function exportSave() {
+    const data = btoa(JSON.stringify(G));
+    const el = document.createElement('textarea');
+    el.value = data;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    el.remove();
+    showToast('Save copied to clipboard!', 'info');
+}
+
+function importSave() {
+    const raw = prompt('Paste your save data:');
+    if (!raw) return;
+    try {
+        G = Object.assign(defaultState(), JSON.parse(atob(raw.trim())));
+        saveGame();
+        applyAgeTheme(AGES[G.ageIndex]);
+        showToast('Save loaded!', 'info');
+        updateUI();
+    } catch(e) {
+        showToast('Invalid save data.', 'error');
     }
 }
 
-// Start the game
-initGame();
+function resetGame() {
+    if (!confirm('Reset all progress? This cannot be undone.')) return;
+    localStorage.removeItem('idleAscent_v2');
+    G = defaultState();
+    applyAgeTheme(AGES[0]);
+    updateUI();
+    showToast('Game reset.', 'info');
+}
+
+// ---- Boot ---------------------------------------------------
+
+function init() {
+    loadGame();
+    applyAgeTheme(AGES[G.ageIndex]);
+
+    // Restore unlocked resource chips
+    G.unlockedResources.forEach(res => {
+        document.getElementById(`res-${res}`)?.classList.remove('hidden');
+    });
+
+    document.getElementById('gatherBtn').addEventListener('click', handleGather);
+    document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    document.getElementById('exportBtn').addEventListener('click', exportSave);
+    document.getElementById('importBtn').addEventListener('click', importSave);
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+    updateUI();
+    startLoop();
+}
+
+document.addEventListener('DOMContentLoaded', init);

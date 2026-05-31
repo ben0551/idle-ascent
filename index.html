@@ -50,11 +50,40 @@
                 <h1>Idle Ascent</h1>
             </div>
             <div class="header-right">
+                <button class="icon-btn" onclick="toggleSettings()" title="Settings">⚙️</button>
                 <div class="age-badge" id="ageBadge">Stone Age</div>
             </div>
         </header>
 
-        <!-- Active Buffs Strip -->
+        <!-- Settings Panel -->
+    <div id="settingsPanel" class="settings-panel hidden">
+        <div class="settings-card">
+            <div class="settings-title">⚙️ Settings</div>
+            <div class="settings-row">
+                <label>Notifications</label>
+                <button class="toggle-btn" id="toggle-notifs" onclick="toggleSetting('notifs')">ON</button>
+            </div>
+            <div class="settings-row">
+                <label>News Ticker</label>
+                <button class="toggle-btn" id="toggle-news" onclick="toggleSetting('news')">ON</button>
+            </div>
+            <div class="settings-row">
+                <label>Particles</label>
+                <button class="toggle-btn" id="toggle-particles" onclick="toggleSetting('particles')">ON</button>
+            </div>
+            <div class="settings-row">
+                <label>Events</label>
+                <button class="toggle-btn" id="toggle-events" onclick="toggleSetting('events')">ON</button>
+            </div>
+            <div class="settings-row">
+                <label>Number Format</label>
+                <button class="toggle-btn" id="toggle-numfmt" onclick="toggleSetting('numfmt')">Short</button>
+            </div>
+            <button onclick="toggleSettings()" class="save-btn" style="margin-top:12px;width:100%">Close</button>
+        </div>
+    </div>
+
+    <!-- Active Buffs Strip -->
         <div id="buffStrip" class="buff-strip hidden"></div>
 
         <!-- Resources Bar -->
@@ -237,6 +266,9 @@
             </div>
 
             <!-- Hall of Ages -->
+            <!-- Multiplier Breakdown -->
+            <div class="mult-breakdown" id="multBreakdown"></div>
+
             <div class="hall-of-ages">
                 <div class="hall-title">🏛️ Hall of Ages</div>
                 <div class="hall-subtitle">Your civilization milestones across all runs</div>

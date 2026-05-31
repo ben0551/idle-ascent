@@ -717,11 +717,63 @@ function renderStats() {
     }
 
     renderHallOfAges();
+    renderMultBreakdown();
+}
+
+function renderMultBreakdown() {
+    const panel = document.getElementById('multBreakdown');
+    if (!panel) return;
+
+    const rows = [];
+
+    // Prestige
+    if ((G.prestigeMultiplier || 1) > 1) rows.push({ label: `✨ Prestige ×${G.prestigeCount}`, value: `×${(G.prestigeMultiplier).toFixed(2)}`, color: '#a78bfa' });
+
+    // Event bonus
+    if ((G.eventBonus || 1) > 1) rows.push({ label: '🎲 Event Bonuses', value: `×${(G.eventBonus).toFixed(2)}`, color: '#fbbf24' });
+
+    // Upgrades
+    UPGRADES.filter(u => G.upgrades[u.id] && u.effect?.type === 'global').forEach(u => {
+        rows.push({ label: `⬆️ ${u.name}`, value: `×${u.effect.multiplier}`, color: '#f59e0b' });
+    });
+
+    // Research
+    RESEARCH.filter(r => G.research[r.id] && r.effect?.type === 'global').forEach(r => {
+        rows.push({ label: `🔬 ${r.name}`, value: `×${r.effect.multiplier}`, color: '#a78bfa' });
+    });
+
+    // Discoveries
+    DISCOVERIES.filter(d => G.discoveries[d.id] && d.effect?.type === 'global').forEach(d => {
+        rows.push({ label: `💡 ${d.name}`, value: `×${d.effect.multiplier}`, color: '#facc15' });
+    });
+
+    // Active buffs
+    (G.activeBuffs || []).filter(b => b.res === 'all' && Date.now() < b.expiresAt).forEach(b => {
+        const rem = Math.ceil((b.expiresAt - Date.now()) / 1000);
+        rows.push({ label: `⚡ Active Buff (${rem}s)`, value: `×${b.mult}`, color: '#4ade80' });
+    });
+
+    // Compute total
+    const mults = computeMultipliers();
+    rows.push({ label: '🌍 Combined Global', value: `×${mults.global.toFixed(2)}`, color: 'var(--age-color)', bold: true });
+
+    panel.innerHTML = `
+        <div class="mult-title">📈 Active Multipliers</div>
+        <div class="mult-rows">
+            ${rows.map(r => `
+                <div class="mult-row">
+                    <span class="mult-label">${r.label}</span>
+                    <span class="mult-val" style="color:${r.color};${r.bold ? 'font-weight:800;font-size:1.05em' : ''}">${r.value}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
 }
 
 // ---- Toast --------------------------------------------------
 
 function showToast(message, type = 'info') {
+    if (!settings.notifs && type !== 'error') return;
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -865,6 +917,7 @@ function resizeCanvas() {
 }
 
 function burstParticles(color, count = 60) {
+    if (!settings.particles) return;
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
     for (let i = 0; i < count; i++) {
@@ -982,6 +1035,7 @@ let newsInterval = null;
 
 function startNewsTicker() {
     newsInterval = setInterval(() => {
+        if (!settings.news) return;
         const age = AGES[G.ageIndex];
         if (age.id !== lastNewsAge) {
             lastNewsAge = age.id;
@@ -993,9 +1047,60 @@ function startNewsTicker() {
     }, 18000); // every 18 seconds
 }
 
+// ---- Settings -----------------------------------------------
+
+const DEFAULT_SETTINGS = { notifs: true, news: true, particles: true, events: true, numfmt: 'short' };
+let settings = { ...DEFAULT_SETTINGS };
+
+function loadSettings() {
+    try {
+        const s = JSON.parse(localStorage.getItem('idleAscent_settings') || '{}');
+        settings = { ...DEFAULT_SETTINGS, ...s };
+    } catch(e) {}
+    applySettings();
+}
+
+function saveSettings() {
+    localStorage.setItem('idleAscent_settings', JSON.stringify(settings));
+}
+
+function applySettings() {
+    const boolKeys = ['notifs', 'news', 'particles', 'events'];
+    boolKeys.forEach(k => {
+        const btn = document.getElementById(`toggle-${k}`);
+        if (btn) btn.textContent = settings[k] ? 'ON' : 'OFF';
+        if (btn) btn.classList.toggle('toggle-off', !settings[k]);
+    });
+    const numBtn = document.getElementById('toggle-numfmt');
+    if (numBtn) numBtn.textContent = settings.numfmt === 'short' ? 'Short' : 'Full';
+}
+
+function toggleSetting(key) {
+    if (key === 'numfmt') {
+        settings.numfmt = settings.numfmt === 'short' ? 'full' : 'short';
+    } else {
+        settings[key] = !settings[key];
+    }
+    saveSettings();
+    applySettings();
+}
+
+function toggleSettings() {
+    document.getElementById('settingsPanel').classList.toggle('hidden');
+}
+
+// Override fmt to support full number format
+const _fmtOrig = window._fmtOrig || null;
+function fmtFull(n) {
+    if (n === undefined || n === null) return '0';
+    n = Math.floor(n);
+    return n.toLocaleString();
+}
+
 // ---- Boot ---------------------------------------------------
 
 function init() {
+    loadSettings();
     loadGame();
     applyAgeTheme(AGES[G.ageIndex]);
 

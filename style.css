@@ -47,6 +47,77 @@ h1 {
     letter-spacing: 1px;
 }
 
+.icon-btn {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
+    padding: 4px;
+}
+.icon-btn:hover { opacity: 1; transform: rotate(30deg); }
+
+.settings-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 180;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(5px);
+}
+
+.settings-card {
+    background: rgba(10,10,22,0.98);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 20px 24px;
+    width: min(340px, 90vw);
+}
+
+.settings-title {
+    font-size: 1.05em;
+    font-weight: 700;
+    color: var(--age-color);
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.88em;
+}
+
+.settings-row:last-of-type { border-bottom: none; }
+
+.settings-row label { color: var(--muted); }
+
+.toggle-btn {
+    background: rgba(74,222,128,0.15);
+    border: 1.5px solid #4ade80;
+    color: #4ade80;
+    padding: 4px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8em;
+    font-weight: 700;
+    transition: all 0.2s;
+    min-width: 52px;
+    text-align: center;
+}
+
+.toggle-btn.toggle-off {
+    background: rgba(239,68,68,0.1);
+    border-color: rgba(239,68,68,0.5);
+    color: var(--muted);
+}
+
 .age-badge {
     padding: 6px 14px;
     border-radius: 20px;
@@ -1014,6 +1085,43 @@ h1 {
     text-align: center;
     white-space: nowrap;
 }
+
+/* ---- Multiplier Breakdown --------------------------------- */
+.mult-breakdown {
+    background: var(--card-bg);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.mult-title {
+    font-size: 0.9em;
+    font-weight: 700;
+    color: var(--age-color);
+    margin-bottom: 10px;
+}
+
+.mult-rows { display: flex; flex-direction: column; gap: 5px; }
+
+.mult-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8em;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.mult-row:last-child {
+    border-bottom: none;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 4px;
+}
+
+.mult-label { color: var(--muted); }
+.mult-val { font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* ---- Hall of Ages ----------------------------------------- */
 .hall-of-ages {

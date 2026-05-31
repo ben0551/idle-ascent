@@ -17,8 +17,8 @@ function scheduleNextEvent() {
 }
 
 function tryFireEvent() {
-    // Don't stack events or fire during age overlay
-    if (eventActive) { scheduleNextEvent(); return; }
+    // Don't stack events or fire if disabled
+    if (eventActive || !settings.events) { scheduleNextEvent(); return; }
 
     const ageName = AGES[G.ageIndex].id;
     const pool = RANDOM_EVENTS.filter(e => e.ages.includes(ageName));

@@ -16,6 +16,23 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Prevent iOS Safari double-tap zoom on all interactive elements */
+button,
+.building-card,
+.upgrade-card,
+.research-card,
+.research-card,
+.milestone-card,
+.discovery-card,
+.psh-card,
+.event-choice-btn,
+.tab-btn,
+.buy-btn,
+.view-btn,
+.tree-node {
+    touch-action: manipulation;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #1a1510 0%, #2a2018 100%);
